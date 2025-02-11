@@ -26,7 +26,7 @@ obs = pd.read_pickle("data/observations/actuals_DK2_offshore_wind_power_oct24.pk
 obs = obs.dropna()
 
 #%%
-corrected, estimated_quantiles, actual, beta, orig  = nq.pipeline(ensembles, obs, epochs = 20, quantiles_taqr = quantiles)
+corrected, estimated_quantiles, actual, beta, orig  = nq.pipeline(ensembles, obs.values, epochs = 20, quantiles_taqr = quantiles)
 estimated_quantiles.columns = quantiles
 #%%
 """
@@ -87,7 +87,7 @@ def evaluate_estimator(actual, est_quantiles, estimator, discrete = False):
     
 class quantile_estimator():
     def __init__(self, quantiles = [0.01, 0.025, 0.05, 0.25, 0.5, 0.75, 0.95, 0.975, 0.99]):
-        self.quantiles = quantiles[:]
+        self.quantiles = np.array(quantiles[:])
         
     def fit(self, quantiles):
         return
@@ -105,5 +105,53 @@ class constant_estimator(quantile_estimator):
             return self.quantiles[tmp][-1]
         else:
             return self.quantiles[0]
+     
+class piecewise_linear(quantile_estimator):
+    
+    def __init__(self, quantiles, max_val, min_val):
         
+        super().__init__(quantiles)
+        
+        tmp = np.zeros(len(self.quantiles)+2)
+        tmp[1:-1] = self.quantiles
+        tmp[0] = 0
+        tmp[-1] = 1
+        
+        self.quantiles = tmp
+        
+        self.max_val = max_val
+        self.min_val = min_val
+    
+    
+    def fit(self, est_quantiles):
+        self.est_quantiles = est_quantiles
+        
+        self.q_vals = np.zeros(len(est_quantiles)+2)
+        self.q_vals[1:-1] = est_quantiles
+        
+        self.q_vals[-1] = self.max_val
+        self.q_vals[0] = self.min_val
+
+        self.diffs = self.q_vals[1:] - self.q_vals[:-1]
+        self.coefs = self.quantiles[1:] - self.quantiles[:-1]
+    
+    def estimate(self, y):
+        
+        conds = (y >= self.q_vals[:-1]) & (y < self.q_vals[1:])
+        vals = self.coefs * (y - self.q_vals[:-1]) / self.diffs + self.quantiles[:-1]
+
+        
+        return np.piecewise(y, conds, vals)
+        
+        
+        
+        
+
 #%% 
+
+est1 = constant_estimator(quantiles)
+evaluate_estimator(actual, estimated_quantiles, est1)
+
+#%%
+est2 = piecewise_linear(quantiles, actual.max()*1.01, actual.min()-1)
+evaluate_estimator(actual,estimated_quantiles, est2)
