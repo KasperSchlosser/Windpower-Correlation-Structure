@@ -2,3 +2,4 @@
 *csv
 *npy
 *keras
+__pycache__/*
