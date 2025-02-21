@@ -8,55 +8,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy.stats as stats
-
-from statsmodels.tsa.api import acf
-
+import statsmodels.api as sm
 
 
-def evaluate_estimator(actual, est_quantiles, estimator, discrete = False):
-    X = actual.index
-    dist = stats.norm()
-    
-    x_dist = np.linspace(-3,3,1000)
-    dist_quantiles = dist.ppf(np.arange(1,len(X)+1) / (len(X)+1))
-    
-    pseudo_resids, resids = estimator.transform(est_quantiles.values, actual.values)
-    
-    ## plot
-    lims = dist.ppf([0.001/len(X), 0.01, 0.05, 0.5, 0.95, 0.99, 1 - 0.001/len(X)])
-    
-    fig, axes = plt.subplots(2,2, figsize = (14,8))
-    
-    sns.scatterplot(x = X, y = resids, ax = axes[0,0])
-    axes[0,0].hlines(lims, X[0], X[-1], color = 'k', linestyle = '--')
-    
-    sns.histplot(x = resids, ax = axes[0,1], discrete = discrete, stat = "density")
-    axes[0,1].plot(x_dist, dist.pdf(x_dist), color = 'k')
-    
-    axes[1,0].scatter(dist_quantiles, sorted(resids))
-    tmp = np.linspace(min(dist_quantiles), max(dist_quantiles),10)
-    axes[1,0].plot(tmp,tmp)
-    axes[1,0].set_xlabel("Predicted")
-    axes[1,0].set_ylabel("Actual")
-    
-    
-    a, c = acf(resids, alpha = 0.05, nlags = 50)
-    print(np.isnan(resids).sum())
-    axes[1,1].bar(np.arange(0,len(a)),a)
-    axes[1,1].fill_between(np.arange(0,len(a)), c[:,0] - a, c[:,1] - a, color = 'black', alpha = 0.3)
-    
-    return resids, axes
-    
-class quantile_estimator():
-    def __init__(self, quantiles = [0.01, 0.025, 0.05, 0.25, 0.5, 0.75, 0.95, 0.975, 0.99]):
-        self.quantiles = np.array(quantiles[:])
+#%% quantile models
+# models estimating cdfs from the nabqr quantiles
+# models fits a function to quantiles model(q) -> F(x)
+# foward takes and observation x and gives resulting quantile:
+#   model.forward(y): F(y) = u
+# Backwards takes from cdf-space back to original space
+# model.backward(u): F^-1(u) = x
+
+class quantile_model():
+    def __init__(self, quantiles = (0.5,0.3,0.5,0.7,0.95), dist = stats.norm()):
+        self.quantiles = np.array(quantiles)
+        self.dist = dist
         
-    def fit(self, quantiles):
+    def fit(self, est_quantiles):
         return
     def forward(self, y):
         return
     def backward(self, u):
         return
+    
     def transform(self, est_quantiles, actuals):
        
         pseudo_resids = np.zeros(len(est_quantiles))
@@ -80,8 +54,8 @@ class quantile_estimator():
             orig[i] = self.backward(pseudo_resids[i])
         
         return pseudo_resids, orig
-    
-class constant_estimator(quantile_estimator):
+
+class constant_model(quantile_model):
     
     def fit(self, est_quantiles):
         self.q = est_quantiles[:]
@@ -98,7 +72,7 @@ class constant_estimator(quantile_estimator):
         if tmp.any(): return self.q[tmp]
         else: return np.nan
      
-class piecewise_linear(quantile_estimator):
+class piecewise_linear_model(quantile_model):
     
     def __init__(self, quantiles, min_val, max_val):
         
@@ -139,5 +113,94 @@ class piecewise_linear(quantile_estimator):
         vals = self.diffs * (u-self.quantiles[:-1]) / self.coefs + self.q_vals[:-1]
 
         return np.piecewise(u, conds, vals)
+
+#%% misc functions
+
+def evaluate_pseudoresids(pseudo_resids, index = None, save_path = None, name = None, figsize = (14,8), close_figs = False):
+    if index is None:
+        index = list(range(len(pseudo_resids)))
     
-   
+    if name is None:
+        Name = "psudo_residual"
+    
+    dist = stats.norm()
+    resids = dist.ppf(pseudo_resids)
+    
+    theo_quantiles = dist.ppf(np.arange(1,len(pseudo_resids)+1) / (len(pseudo_resids)+1))
+    
+    figs = [plt.figure(figsize = figsize, layout = "tight") for _ in range(5)]
+    
+    # Scatter plot
+    ax = figs[0].subplots()
+    sns.scatterplot(x = index,  y = resids, ax = ax)
+    
+    lims = (dist.ppf(0.05 / (2*len(pseudo_resids))), dist.ppf(1 - 0.05 / (2*len(pseudo_resids))))
+    ax.hlines(0, index[0], index[-1], color = 'black')
+    ax.hlines((-2,2), index[0], index[-1], color = 'navy', linestyle = 'dashed')
+    ax.hlines(lims, index[0], index[-1], color = "crimson")
+    
+    if save_path is not None:
+        figs[0].savefig( save_path / (Name + "_scatter.png" ))
+        
+    # Uniform histogram
+    ax = figs[1].subplots()
+    sns.histplot(x = resids, stat = "density", ax = ax)
+    
+    if save_path is not None:
+        figs[1].savefig( save_path / (Name + "_cdfdist.png" ))
+    
+    
+    #normal histogram
+    ax = figs[2].subplots()
+    
+    sns.histplot(x = resids, stat = "density", ax = ax)
+    sns.lineplot(x = theo_quantiles, y = dist.pdf(theo_quantiles), ax = ax, color = 'black')
+    if save_path is not None:
+        figs[2].savefig( save_path / (Name + "_normaldist.png" ))
+    
+    # propplot
+    ax = figs[3].subplots()
+    
+    sns.scatterplot(x = theo_quantiles, y = sorted(resids), ax = ax)
+    ax.axline((theo_quantiles[0], theo_quantiles[0]), (theo_quantiles[-1], theo_quantiles[-1]))
+    ax.set_xlabel("Theoretical Quantile")
+    ax.set_ylabel("Observed Quantile")
+    
+    if save_path is not None:
+        figs[3].savefig( save_path / (Name + "_probplot.png" ))
+    
+    # (pacf) plot
+    axs = figs[4].subplots(1,2)
+    
+    acf_vals, conf_acf = sm.tsa.acf(resids, alpha = 0.05)
+    pacf_vals, conf_pacf = sm.tsa.pacf(resids, alpha = 0.05)
+    
+    sns.barplot(x = np.arange(len(acf_vals)), y = acf_vals, ax = axs[0])
+    axs[0].fill_between(
+        np.arange(len(acf_vals)),
+        conf_acf[:,0] - acf_vals,
+        conf_acf[:,1] - acf_vals,
+        color = 'black',
+        alpha = 0.3
+    )
+    axs[0].set_title("ACF")
+    
+    sns.barplot(x = np.arange(len(pacf_vals)), y = pacf_vals, ax = axs[1])
+    axs[1].fill_between(
+        np.arange(len(pacf_vals)),
+        conf_pacf[:,0] - pacf_vals,
+        conf_pacf[:,1] - pacf_vals,
+        color = 'black',
+        alpha = 0.3
+    )
+    axs[1].set_title("PACF")
+    
+    if save_path is not None:
+        figs[4].savefig( save_path / (Name + "_autocorrelation.png" ))
+        
+    if close_figs:
+        for fig in figs:
+            plt.close(fig)
+        return
+    
+    return figs
