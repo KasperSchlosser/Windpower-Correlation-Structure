@@ -3,4 +3,4 @@
 *npy
 *keras
 *pkl
-__pycache__/*
+**/*pyc
