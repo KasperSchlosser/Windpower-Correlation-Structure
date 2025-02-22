@@ -22,8 +22,8 @@ def cleantz(ensemble):
 
 pipeline_args = {
     "training_size": 0.8,
-    "epochs": 50,
-    "quantiles_taqr": np.arange(0.01,1,0.01)
+    "epochs": 200,
+    "quantiles_taqr": np.arange(1,100) / 100 
     }
 
 PATH = Path()
