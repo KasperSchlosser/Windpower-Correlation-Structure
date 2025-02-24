@@ -38,6 +38,8 @@ observations = list((PATH / "Data" / "Observations").glob("*wind*"))
 dfs = {}
 for ens, obs in zip(ensembles, observations):
     
+    print(ens,obs)
+    
     zone = "-".join(ens.stem.split("_")[:2])
     
     ens = pd.read_pickle(ens)
@@ -75,6 +77,24 @@ for zone in full_data.columns.get_level_values(0).unique():
         tmp.to_csv(PATH / "Data" / "NABQR Results" / (zone + ".csv" ))
         tmp.to_pickle(PATH / "Data" / "NABQR Results" / (zone + ".pkl" ))
         
+#%% Tail propbabilities
+
+
+_, estimated_quantiles, actual, _, _ = nabqr.pipeline(
+    full_data["DK1-offshore","Ensembles"],
+    full_data["DK1-offshore","Observed"].values.squeeze(),
+    quantiles_taqr = np.arange(0.99, 1,0.0001),
+    epochs = 200,
+    name = "Tail_estimates"
+)
+
+
+estimated_quantiles.columns = [f'{x:.04f}' for x in pipeline_args["quantiles_taqr"]]
+actual.name = "Observed"
+
+tmp = pd.concat((estimated_quantiles, actual), axis = 1, keys = ["Quantiles", "Observed"])
+tmp.to_csv(PATH / "Data" / "NABQR Results" / ( "tails.csv" ))
+tmp.to_pickle(PATH / "Data" / "NABQR Results" / ("tails.pkl" ))
         
         
         
