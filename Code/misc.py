@@ -11,7 +11,7 @@ def evaluate_pseudoresids(pseudo_resids, index = None, save_path = None, name = 
         index = list(range(len(pseudo_resids)))
     
     if name is None:
-        Name = "psudo_residual"
+        name = "psudo_residual"
     
     dist = stats.norm()
     resids = dist.ppf(pseudo_resids)
@@ -30,14 +30,15 @@ def evaluate_pseudoresids(pseudo_resids, index = None, save_path = None, name = 
     ax.hlines(lims, index[0], index[-1], color = "crimson")
     
     if save_path is not None:
-        figs[0].savefig( save_path / (Name + "_scatter.png" ))
+        figs[0].savefig( save_path / (name + "_scatter.png" ))
         
     # Uniform histogram
     ax = figs[1].subplots()
-    sns.histplot(x = resids, stat = "density", ax = ax)
+    sns.histplot(x = pseudo_resids, stat = "density", ax = ax)
+    ax.hlines(1,0,1, color = 'black')
     
     if save_path is not None:
-        figs[1].savefig( save_path / (Name + "_cdfdist.png" ))
+        figs[1].savefig( save_path / (name + "_cdfdist.png" ))
     
     
     #normal histogram
@@ -46,7 +47,7 @@ def evaluate_pseudoresids(pseudo_resids, index = None, save_path = None, name = 
     sns.histplot(x = resids, stat = "density", ax = ax)
     sns.lineplot(x = theo_quantiles, y = dist.pdf(theo_quantiles), ax = ax, color = 'black')
     if save_path is not None:
-        figs[2].savefig( save_path / (Name + "_normaldist.png" ))
+        figs[2].savefig( save_path / (name + "_normaldist.png" ))
     
     # propplot
     ax = figs[3].subplots()
@@ -57,7 +58,7 @@ def evaluate_pseudoresids(pseudo_resids, index = None, save_path = None, name = 
     ax.set_ylabel("Observed Quantile")
     
     if save_path is not None:
-        figs[3].savefig( save_path / (Name + "_probplot.png" ))
+        figs[3].savefig( save_path / (name + "_probplot.png" ))
     
     # (pacf) plot
     axs = figs[4].subplots(1,2)
@@ -86,7 +87,7 @@ def evaluate_pseudoresids(pseudo_resids, index = None, save_path = None, name = 
     axs[1].set_title("PACF")
     
     if save_path is not None:
-        figs[4].savefig( save_path / (Name + "_autocorrelation.png" ))
+        figs[4].savefig( save_path / (name + "_autocorrelation.png" ))
         
     if close_figs:
         for fig in figs:
