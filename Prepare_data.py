@@ -76,6 +76,17 @@ for zone in full_data.columns.get_level_values(0).unique():
         tmp = pd.concat((estimated_quantiles, actual), axis = 1, keys = ["Quantiles", "Observed"])
         tmp.to_csv(PATH / "Data" / "NABQR Results" / (zone + ".csv" ))
         tmp.to_pickle(PATH / "Data" / "NABQR Results" / (zone + ".pkl" ))
+
+#%% Make df with all data
+
+datafiles = list((PATH / "Data" / "NABQR Results").glob("DK*pkl"))
+files = [pd.read_pickle(f) for f in datafiles]
+names = [f.stem for f in datafiles]
+
+data_big = pd.concat(files, axis = 1, keys = names)
+
+data_big.to_pickle(PATH / "Data" / ("NABQR_results_full.pkl" ))
+data_big.to_csv(PATH / "Data" / ("NABQR_results_full.csv" ))
         
 #%% Tail propbabilities
 
@@ -89,7 +100,7 @@ _, estimated_quantiles, actual, _, _ = nabqr.pipeline(
 )
 
 
-estimated_quantiles.columns = [f'{x:.04f}' for x in pipeline_args["quantiles_taqr"]]
+estimated_quantiles.columns = [f'{x:.04f}' for x in np.arange(0.99, 1,0.0001)]
 actual.name = "Observed"
 
 tmp = pd.concat((estimated_quantiles, actual), axis = 1, keys = ["Quantiles", "Observed"])
