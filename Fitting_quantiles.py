@@ -13,14 +13,25 @@ import Code.misc as misc
 #needs to be made to do all 4 data sets, when they are done
 
 PATH = pathlib.Path()
+ 
 
-data = pd.read_pickle(PATH / "Data" / "NABQR Results" / "DK1-offshore.pkl")
-data_tails = pd.read_pickle(PATH / "Data" / "NABQR Results" / "DK1-offshore_tail.pkl")
+data_files = list((PATH / "Data" / "NABQR Results" ).glob("DK*pkl"))
+data = pd.concat([pd.read_pickle(p) for p in data_files], axis = 0, keys = [d.stem for d in data_files])
+
 quantiles = [float(x) for x in data["Quantiles"].columns]
+
+
+
+#tail data
+data_tails = pd.read_csv(PATH / "Data" / "NABQR Results" / "DK1-offshore_tail.csv", index_col = 0, header = [0,1])
+data_tails.index = pd.to_datetime(data_tails.index)
 quantiles_tail = [float(x) for x in data["Quantiles"].columns]
 
 #because im stupid i rounded to 2 significant
 quantiles_tail = [f'{x:.3f}' for x in np.arange(0.9901,1, 0.0001)]
+
+#and im stupid and did not get save index
+data.index = data.index.set_levels(data_tails.index, level = 1)
 
 
 #%% tails of qr
@@ -36,7 +47,7 @@ ax.axline((0,0), slope = 1.2, color = 'crimson')
 
 #numerical problems can be seend
 fig, ax = plt.subplots(figsize = (14,8), layout = "tight")
-ax.plot(data.index, data_tails["Quantiles"].iloc[:,::10])
+ax.plot(data_tails.index, data_tails["Quantiles"].iloc[:,::10])
 ax.legend(quantiles_tail[::10])
 
 ax.set_xlim([np.datetime64("2024-07-26T12:00"),np.datetime64("2024-07-28T06:00")] )
