@@ -162,7 +162,7 @@ df_scores.loc["forecast", idx[:, "MSE"]] = np.mean((actual - df_forecast.xs("ori
 for zone in zones:
     # get residuals
     quant_est = qm.piecewise_linear_model(quantiles, data[zone,"Observed"].values.min()-1, data[zone,"Observed"].values.max()*1.1)
-    _, resids = quant_est.transform(df_zone["Quantiles"].values, df_zone["Observed"].values.squeeze())
+    _, resids = quant_est.transform(data[zone,"Quantiles"].values, data[zone,"Observed"].values.squeeze())
     
     # -ll for nabqr is just the actuals
     # this score is a bit funky in th
@@ -198,23 +198,39 @@ for i, zone in enumerate(zones):
 # this seems harder for nabqr quantiles
 # not done for now
 for zone in zones:
-    # get residuals
+    y = data[zone,"Observed"].values.squeeze()
+    x_min = y.min()-1
+    x_max = y.max()*1.1
+    dist = stats.norm()
+    
     quant_est = qm.piecewise_linear_model(quantiles, data[zone,"Observed"].values.min()-1, data[zone,"Observed"].values.max()*1.1)
-    _, resids = quant_est.transform(df_zone["Quantiles"].values, df_zone["Observed"].values.squeeze())
     
-    #forecast
-    sig =  (df_forecast[zone, "normal", "estimate"] - df_forecast[zone, "normal", "0.05"]) / stats.norm().ppf(0.95)
-    mu =  df_forecast[zone, "normal", "estimate"]
-    x = resids
+    sd_forecast =  ((df_forecast[zone, "normal", "estimate"] - df_forecast[zone, "normal", "0.05"]) / stats.norm().ppf(0.95)).values
+    mu_forecast = df_forecast[zone, "normal", "estimate"].values
     
-    df_scores.loc["forecast", idx[zone, "CRPS"]] = np.nanmean(ps.crps_gaussian(x,mu,sig))
+    sd_prediction =  ((df_individual[zone, "normal", "estimate"] - df_individual[zone, "normal", "0.05"]) / stats.norm().ppf(0.95)).values
+    mu_prediction = df_individual[zone, "normal", "estimate"].values
     
-    # onestep
-    sig =  (df_individual[zone, "normal", "estimate"] - df_individual[zone, "normal", "0.05"]) / stats.norm().ppf(0.95)
-    mu =  df_individual[zone, "normal", "estimate"]
-    x = resids
+    crps_nabqr = 0
+    crps_pred = 0
+    crps_fore = 0
+    for i in range(1,len(y)): #skip first, does not work for sarma models
+        
+        quant_est.fit(data[zone,"Quantiles"].iloc[i])
+        
+        cdf_nabqr = lambda x: quant_est.forward(x)
+        cdf_prediction = lambda x: dist.cdf((dist.ppf(quant_est.forward(x)) - mu_prediction[i]) / sd_prediction[i])
+        cdf_forecast = lambda x: dist.cdf((dist.ppf(quant_est.forward(x)) - mu_forecast[i]) / sd_forecast[i])
+        
+        crps_nabqr += ps.crps_quadrature(y[i], cdf_nabqr, x_min, x_max)
+        crps_pred += ps.crps_quadrature(y[i], cdf_prediction, x_min, x_max )
+        crps_fore += ps.crps_quadrature(y[i], cdf_forecast, x_min, x_max )
+        
+    df_scores.loc["NABQR", idx[zone, "CRPS"]] = crps_nabqr / len(y)-1
+    df_scores.loc["prediction", idx[zone, "CRPS"]] = crps_pred / len(y)-1
+    df_scores.loc["forecast", idx[zone, "CRPS"]] = crps_fore / len(y)-1
+        
     
-    df_scores.loc["prediction", idx[zone, "CRPS"]] = np.nanmean(ps.crps_gaussian(x,mu,sig))
 
 
 #%%
@@ -259,7 +275,7 @@ for i, zone in enumerate(zones):
     
 
 #%% combined sarma model
-
+"""
 df_combined = pd.DataFrame(index = data.index,
                            columns = pd.MultiIndex.from_product([zones, ("normal", "original"),("estimate","0.05", "0.95")]),
                            dtype = np.float64
@@ -292,3 +308,4 @@ for i, zone in enumerate(zones):
     axes[i].scatter(df_combined.loc[:,idx[zone,'original', 'estimate']], data[zone,"Observed"].values, color = 'crimson')
     axes[i].scatter(data.loc[:,idx[zone,"Quantiles","0.50"]], data[zone,"Observed"].values, color = 'navy', alpha = 0.3)
     axes[i].axline((0,0), slope = 1, color = 'black')
+"""
