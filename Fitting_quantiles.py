@@ -23,7 +23,7 @@ quantiles = [float(x) for x in data["Quantiles"].columns]
 
 
 #tail data
-data_tails = pd.read_csv(PATH / "Data" / "NABQR Results" / "DK1-offshore_tail.csv", index_col = 0, header = [0,1])
+data_tails = pd.read_pickle(PATH / "Data" / "NABQR Results" / "tails.pkl")
 data_tails.index = pd.to_datetime(data_tails.index)
 quantiles_tail = [float(x) for x in data["Quantiles"].columns]
 
