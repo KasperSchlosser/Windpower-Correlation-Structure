@@ -30,33 +30,52 @@ def get_forecast(modelres, resids, N_step = 24, N_sim = 0, alpha = 0.1):
     #simulate first chunk if needed
     
     if N_sim > 0: 
-        sim_res[:N_step, :] = modelres.simulate(nsimulations = N_step, repetitions = N_sim)
+        sim_res[:N_step, :] = modelres.simulate(nsimulations = N_step, repetitions = N_sim).squeeze()
     
     for k in range(N_step, len(resids) - N_step, N_step):
         # seems to take a bit longer to fit, all data might not be need
         
         min_k = max(k - 10 * N_step,0)
-        modelres.apply(resids[min_k:k])
+        res2 = modelres.apply(resids[min_k:k])
         
-        tmp = modelres.get_forecast(N_step)
+        tmp = res2.get_forecast(N_step)
         res[k:k + N_step,:] = tmp.summary_frame(alpha = alpha).values[:,[0,2,3]] # discard mean_se
         
         if N_sim > 0:
-            sim_res[k:k + N_step, :] = modelres.simulate(nsimulations = N_step, repetitions = N_sim, anchor = "end")
+            sim_res[k:k + N_step, :] = res2.simulate(nsimulations = N_step, repetitions = N_sim, anchor = "end").squeeze()
     
     #get last chunk if needed
     last = (len(resids) // N_step) * N_step
     k_last = len(resids) - last
     
     if k_last < N_step:
-        modelres.apply(resids[:last])
+        res2 = modelres.apply(resids[:last])
         
-        tmp = modelres.get_forecast(k_last)
+        tmp = res2.get_forecast(k_last)
         res[last:,:] = tmp.summary_frame(alpha = alpha).values[:,[0,2,3]] # discard mean_se
         if N_sim > 0:
-            sim_res[last:, :] = modelres.simulate(nsimulations = k_last, repetitions = N_sim, anchor = "end")
+            sim_res[last:, :] = res2.simulate(nsimulations = k_last, repetitions = N_sim, anchor = "end").squeeze()
             
     return res, sim_res
+
+def variogram_score(x, y, p = 0.5, horizon = 24):
+    #basically bastians code
+    # x: k*n matrix, k = number of simulations, n = number of obersvations
+    # y: (n,) array of y
+    
+    k,n = x.shape
+    
+    scores = np.zeros((horizon,horizon))
+    for t in range(0, len(y) // horizon):
+        for i in range(t*horizon, (t+1)*horizon - 1):
+            for j in range(i+1 , t + horizon):
+                dist =  (j-i)
+                Ediff = np.mean(np.abs(x[:,i] - x[:,j])**p)
+                Adiff = np.abs(y[i]- y[j])**p
+                         
+                scores[i,j] += 1 / dist * (Adiff - Ediff) ** 2
+    return scores.sum(), scores
+    
 
 #%% load data
 PATH = pathlib.Path()
@@ -65,65 +84,78 @@ data = pd.read_pickle( PATH / "Data" / ("NABQR_results_full.pkl" ))
 zones = data.columns.get_level_values(level = 0).unique()
 quantiles = data[:]["Quantiles"].columns.unique().values
 
+horizons = [6, 12, 24]
+N_sim = 10
+
 # there is some quantile crossings
 # i will try to fix by just sorting
 # might work?
 for zone in zones:
     data[zone, "Quantiles"] = np.sort(data[zone, "Quantiles"].values)
 
-#make transformed data
 
-data_resids = pd.DataFrame(index = data.index)
-for zone in zones:
-    df_zone = data[zone]
-    
-    quant_est = qm.piecewise_linear_model(quantiles, data[zone].values.min(), data[zone].values.max())
-    resids, _ = quant_est.transform(df_zone["Quantiles"].values, df_zone["Observed"].values.squeeze())
-    
-    data_resids[zone] = resids
-
-#%% individual SARMA models.
-
-
-horizons = (6,12,24)
-N_sim = 10
-
+#%%
 df_forecast = pd.DataFrame(index = data.index,
-                           columns = pd.MultiIndex.from_product([zones, horizons, ("normal", "original"), ("estimate", "upper prediction", "lower prediction")]),
+                           columns = pd.MultiIndex.from_product([zones, ["nabqr"] + horizons, ("normal", "original"), ("estimate", "lower prediction", "upper prediction")]),
                            dtype = np.float64
 )
 
 df_sim = pd.DataFrame(index = data.index,
-                           columns = pd.MultiIndex.from_product([zones, horizons, ("normal", "original"), np.arange(N_sim)]),
+                           columns = pd.MultiIndex.from_product([zones, ["nabqr"] + horizons, ("normal", "original"), np.arange(N_sim)]),
                            dtype = np.float64
 ) 
 
+#%% nabqr
+df_forecast.loc[:, idx[:,"nabqr","normal", "estimate"]]= stats.norm.ppf(0.5)
+df_forecast.loc[:, idx[:,"nabqr","normal", "lower prediction"]] = stats.norm.ppf(0.05)
+df_forecast.loc[:, idx[:,"nabqr","normal", "upper prediction"]] = stats.norm.ppf(0.95)
 
-for zone, horizon in product(zones, horizons):
-    print(zone, horizon)
-    
-    resids = data_resids[zone]
-    
-    model = model = sm.tsa.SARIMAX(resids, order = (1,0,1), seasonal_order=(1,0,1,24))
-    res = model.fit()
-    
-    tmp = get_forecast(res, resids, N_step = horizon, N_sim = N_sim)
-    
-    df_forecast.loc[:, idx[zone, horizon, "normal"]] = tmp[0]
-    df_sim.loc[:, idx[zone,horizon,'normal', :]] = tmp[1]
-    
-# Back transform results
-#%%
+df_sim.loc[:, idx[:, "nabqr", "normal", :]] = stats.norm().rvs((len(data), len(zones) * N_sim))
+
 for zone in zones:
-    actuals = data[zone,"Observed"].values
+    print(zone)
+    
+    actuals = data[zone,"Observed"].values.squeeze()
+    est_quantiles = data[zone, "Quantiles"].values.squeeze()
     
     quant_est = qm.piecewise_linear_model(quantiles, actuals.min() - 1, actuals.max()*1.1)
+    resids, _ = quant_est.transform(est_quantiles, actuals)
+    resids = resids.squeeze()
     
-    df_forecast.loc[:, idx[:,:,"original",:]] = quant_est.back_transform(data[zone, "Quantiles"].values, df_forecast.loc[:, idx[:,:,"normal",:]].values)[0]
-    df_sim.loc[:, idx[:,:,"original",:]] = quant_est.back_transform(data[zone, "Quantiles"].values, df_sim.loc[:, idx[:,:,"normal",:]].values)[0]
+    for horizon in horizons:
+        print(horizon)
+        model = sm.tsa.SARIMAX(resids, order = (1,0,1), seasonal_order=(1,0,1,24))
+        res = model.fit()
+        
+        tmp = get_forecast(res, resids, N_step = horizon, N_sim = N_sim)
+        
+        df_forecast.loc[:, idx[zone, horizon, "normal", :]] = tmp[0]
+        df_sim.loc[:, idx[zone, horizon, 'normal', :]] = tmp[1]
+    
+    df_forecast.loc[:, idx[zone, :, "original", :]] = quant_est.back_transform(est_quantiles, df_forecast.loc[:, idx[zone,:,"normal",:]].values)[0]
+    df_sim.loc[:, idx[zone, :, "original", :]] = quant_est.back_transform(est_quantiles, df_sim.loc[:, idx[zone,:,"normal",:]].values)[0]
     
 
+#%% scores
+
+df_scores = pd.DataFrame(index = ["nabqr"] + list(horizons),
+                         columns = pd.MultiIndex.from_product([zones,["MAE", "MSE", "VARS", "CRPS"]]),
+                         dtype = float)
+
+for zone in zones:
+    actuals = data[zone,"Observed"].values
+    predicted = df_forecast.loc[:,idx[zone, :, "original", "estimate"]]
+
+    df_scores.loc[:, idx[zone,"MAE"]] = (predicted - actuals).abs().mean().values
+    df_scores.loc[:, idx[zone,"MSE"]] = ((predicted - actuals)**2).mean().values
     
+    for p in df_scores.index:
+        
+        sim = df_sim.loc[:, idx[zone, p, "original", :]]
+        
+        df_scores.loc[p, idx[zone,"VARS"]] = nabqr.variogram_score_R_multivariate(sim.values.T, actuals.squeeze())[0]
+        
+        df_scores.loc[p, idx[zone,"CRPS"]] = nabqr.calculate_crps(actuals.squeeze(), sim.values)
 
 #%% plots
 
@@ -168,174 +200,3 @@ for i, zone in enumerate(zones):
     
     fig.savefig(PATH / "Figures" / "Correlation Structure" / (zone + "actual_predicted.png"))
     
-#%% calculate scores
-
-
-df_scores = pd.DataFrame(index = ["NABQR", "prediction", "forecast"],
-                         columns = pd.MultiIndex.from_product([zones,["MAE", "MSE", "-ll", "VARS", "CRPS"]]),
-                         dtype = float)
-
-actual = data.xs("Observed", level = 2, axis = 1).values
-
-df_scores.loc["NABQR", idx[:, "MAE"]] = np.mean(np.abs((actual - data.xs("0.50", level = 2, axis = 1).values)), axis = 0)
-df_scores.loc["NABQR", idx[:, "MSE"]] = np.mean((actual - data.xs("0.50", level = 2, axis = 1).values)**2, axis = 0)
-
-df_scores.loc["prediction", idx[:, "MAE"]] = np.mean(np.abs((actual - df_individual.xs("original", level = 1, axis = 1).xs("estimate", level = 1, axis = 1).values)), axis = 0)
-df_scores.loc["prediction", idx[:, "MSE"]] = np.mean((actual - df_individual.xs("original", level = 1, axis = 1).xs("estimate", level = 1, axis = 1).values)**2, axis = 0)
-
-df_scores.loc["forecast", idx[:, "MAE"]] = np.mean(np.abs((actual - df_forecast.xs("original", level = 1, axis = 1).xs("estimate", level = 1, axis = 1).values)), axis = 0)
-df_scores.loc["forecast", idx[:, "MSE"]] = np.mean((actual - df_forecast.xs("original", level = 1, axis = 1).xs("estimate", level = 1, axis = 1).values)**2, axis = 0)
-
-
-# -ll
-for zone in zones:
-    # get residuals
-    quant_est = qm.piecewise_linear_model(quantiles, data[zone,"Observed"].values.min()-1, data[zone,"Observed"].values.max()*1.1)
-    _, resids = quant_est.transform(data[zone,"Quantiles"].values, data[zone,"Observed"].values.squeeze())
-    
-    # -ll for nabqr is just the actuals
-    # this score is a bit funky in th
-    
-    df_scores.loc["NABQR", idx[zone, "-ll"]] = -stats.norm().logpdf(resids).sum()
-    
-    # i can get the std of the sarma model from the conf int
-    
-    sd =  (df_forecast[zone, "normal", "estimate"] - df_forecast[zone, "normal", "0.05"]) / stats.norm().ppf(0.95)
-    ll = stats.norm().logpdf((resids - df_forecast[zone, "normal", "estimate"]) / sd)
-    df_scores.loc["forecast", idx[zone, "-ll"]] = -np.ma.masked_invalid(ll).sum()
-    
-    sd =  (df_individual[zone, "normal", "estimate"] - df_individual[zone, "normal", "0.05"]) / stats.norm().ppf(0.95)
-    ll = stats.norm().logpdf((resids - df_individual[zone, "normal", "estimate"]) / sd)
-    df_scores.loc["prediction", idx[zone, "-ll"]] = -np.ma.masked_invalid(ll).sum()
-    
-
-# vars
-# i use nabqr implementation
-for i, zone in enumerate(zones):
-    
-    y = actual[:,i]
-    x_nabqr = data[zone, "Quantiles", "0.50"].values.reshape((1,-1))
-    x_prediction = df_individual[zone, "original", "estimate"].values.reshape((1,-1))
-    x_forecast = df_forecast[zone, "original", "estimate"].values.reshape((1,-1))
-    
-    df_scores.loc["NABQR", idx[zone, "VARS"]] = nabqr.variogram_score_R_multivariate(x_nabqr, y, t1 = N_forecast, t2 = 2*N_forecast )[0]
-    df_scores.loc["prediction", idx[zone, "VARS"]] = nabqr.variogram_score_R_multivariate(x_prediction, y, t1 = N_forecast, t2 = 2*N_forecast )[0]
-    df_scores.loc["forecast", idx[zone, "VARS"]] = nabqr.variogram_score_R_multivariate(x_forecast, y, t1 = N_forecast, t2 = 2*N_forecast )[0]
-
-#%%
-# CRPS
-# this seems harder for nabqr quantiles
-# not done for now
-"""
-for zone in zones:
-    y = data[zone,"Observed"].values.squeeze()
-    x_min = y.min()-1
-    x_max = y.max()*1.1
-    dist = stats.norm()
-    
-    quant_est = qm.piecewise_linear_model(quantiles, data[zone,"Observed"].values.min()-1, data[zone,"Observed"].values.max()*1.1)
-    
-    sd_forecast =  ((df_forecast[zone, "normal", "estimate"] - df_forecast[zone, "normal", "0.05"]) / stats.norm().ppf(0.95)).values
-    mu_forecast = df_forecast[zone, "normal", "estimate"].values
-    
-    sd_prediction =  ((df_individual[zone, "normal", "estimate"] - df_individual[zone, "normal", "0.05"]) / stats.norm().ppf(0.95)).values
-    mu_prediction = df_individual[zone, "normal", "estimate"].values
-    
-    crps_nabqr = 0
-    crps_pred = 0
-    crps_fore = 0
-    for i in range(1,len(y)): #skip first, does not work for sarma models
-        
-        quant_est.fit(data[zone,"Quantiles"].iloc[i])
-        
-        cdf_nabqr = lambda x: quant_est.forward(x)
-        cdf_prediction = lambda x: dist.cdf((dist.ppf(quant_est.forward(x)) - mu_prediction[i]) / sd_prediction[i])
-        cdf_forecast = lambda x: dist.cdf((dist.ppf(quant_est.forward(x)) - mu_forecast[i]) / sd_forecast[i])
-        
-        crps_nabqr += ps.crps_quadrature(y[i], cdf_nabqr, x_min, x_max)
-        crps_pred += ps.crps_quadrature(y[i], cdf_prediction, x_min, x_max )
-        crps_fore += ps.crps_quadrature(y[i], cdf_forecast, x_min, x_max )
-        
-    df_scores.loc["NABQR", idx[zone, "CRPS"]] = crps_nabqr / len(y)-1
-    df_scores.loc["prediction", idx[zone, "CRPS"]] = crps_pred / len(y)-1
-    df_scores.loc["forecast", idx[zone, "CRPS"]] = crps_fore / len(y)-1
-"""
-    
-
-
-#%%
-# qss
-df_qss =  pd.DataFrame(index = quantiles, columns = pd.MultiIndex.from_product([zones, ["NABQR", "prediction", "forecast"]]), dtype = float)
-for i, zone in enumerate(zones):
-    print(zone)
-    
-    quant_est = qm.piecewise_linear_model(quantiles, data[zone,"Observed"].values.min()-1, data[zone,"Observed"].values.max()*1.1)
-    
-    y = actual[:,i]
-    #this is the sorted quantiles
-    #might be worth to compare to non sorted
-    x_nabqr = data.loc[:,idx[zone, "Quantiles", :]].values
-    
-    #need to calculate the quantiles for forcast and onestep-prediction
-    Q = stats.norm().ppf(quantiles.astype(float))
-    #need to transform back
-    #gonna take some compute time
-    
-    #forecast
-    sd =  (df_forecast[zone, "normal", "estimate"] - df_forecast[zone, "normal", "0.05"]) / stats.norm().ppf(0.95)
-    tmp = np.outer(sd, Q) + df_forecast[zone, "normal", "estimate"].values[:,np.newaxis]
-    x_forecast = np.zeros_like(tmp)
-    
-    print("forecast")
-    for k in range(tmp.shape[1]):
-        x_forecast[:,k] = quant_est.back_transform(df_zone["Quantiles"].values, tmp[:,k])[1]
-    
-    #onestep prediction
-    sd =  (df_individual[zone, "normal", "estimate"] - df_individual[zone, "normal", "0.05"]) / stats.norm().ppf(0.95)
-    tmp = np.outer(sd, Q) + df_individual[zone, "normal", "estimate"].values[:,np.newaxis]
-    x_prediction = np.zeros_like(tmp)
-    
-    print("prediction")
-    for k in range(tmp.shape[1]):
-        x_prediction[:,k] = quant_est.back_transform(df_zone["Quantiles"].values, tmp[:,k])[1]
-    
-    df_qss.loc[:, idx[zone, "NABQR"]] = nabqr.functions.multi_quantile_skill_score(y, x_nabqr, quantiles.astype(float))
-    df_qss.loc[:, idx[zone, "prediction"]] = nabqr.functions.multi_quantile_skill_score(y, x_prediction, quantiles.astype(float))
-    df_qss.loc[:, idx[zone, "forecast"]] = nabqr.functions.multi_quantile_skill_score(y, x_forecast, quantiles.astype(float))
-    
-
-#%% combined sarma model
-"""
-df_combined = pd.DataFrame(index = data.index,
-                           columns = pd.MultiIndex.from_product([zones, ("normal", "original"),("estimate","0.05", "0.95")]),
-                           dtype = np.float64
-)
-
-tmp = pd.DataFrame( index = data.index, columns = zones, dtype = float)
-for zone in zones:
-    quant_est = qm.piecewise_linear_model(quantiles, data[zone,"Observed"].values.min()-1, data[zone,"Observed"].values.max()*1.1)
-    _, resids = quant_est.transform(data[zone,"Quantiles"].values, data[zone,"Observed"].values.squeeze())
-    
-    tmp.loc[:, zone] = resids.astype(float)
-
-mv_model = sm.tsa.VARMAX(tmp.values, order = (1,0))
-res = mv_model.fit()
-
-df_combined.loc[:,idx[:,"normal","estimate"]] = res.get_prediction().predicted_mean
-df_combined.loc[:,idx[:,"normal",["0.05","0.95"]]] = res.get_prediction().conf_int(0.1)
-
-for zone in zones:
-    for est in df_combined.columns.get_level_values(2).unique():
-        tmp = quant_est.back_transform(data[zone,"Quantiles"].values, df_combined[zone,"normal", est].values.squeeze())[1]
-        df_combined[zone,"original", est] = tmp
-
-
-fig, axes = plt.subplots(2,2,figsize = (14,8), layout = "tight")
-axes = axes.flatten()
-
-for i, zone in enumerate(zones):
-    
-    axes[i].scatter(df_combined.loc[:,idx[zone,'original', 'estimate']], data[zone,"Observed"].values, color = 'crimson')
-    axes[i].scatter(data.loc[:,idx[zone,"Quantiles","0.50"]], data[zone,"Observed"].values, color = 'navy', alpha = 0.3)
-    axes[i].axline((0,0), slope = 1, color = 'black')
-"""
