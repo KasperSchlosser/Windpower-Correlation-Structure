@@ -64,18 +64,26 @@ def variogram_score(x, y, p = 0.5, horizon = 24):
     # y: (n,) array of y
     
     k,n = x.shape
+    print(k,n)
     
     scores = np.zeros((horizon,horizon))
-    for t in range(0, len(y) // horizon):
-        for i in range(t*horizon, (t+1)*horizon - 1):
-            for j in range(i+1 , t + horizon):
-                dist =  (j-i)
-                Ediff = np.mean(np.abs(x[:,i] - x[:,j])**p)
-                Adiff = np.abs(y[i]- y[j])**p
-                         
-                scores[i,j] += 1 / dist * (Adiff - Ediff) ** 2
-    return scores.sum(), scores
+    score = 0
     
+    for t in range(0, len(y) // horizon):
+
+        for i in range(1, horizon - 1):
+            for j in range(i+1 , horizon):
+
+                dist =  (j-i)
+                Ediff = np.mean(np.abs(x[:,t+i] - x[:,t+j])**p)
+                Adiff = np.abs(y[t+i]- y[t+j])**p
+                
+                scores[i,j] += 1 / dist * (Adiff - Ediff) ** 2
+                score += 1 / dist * (Adiff - Ediff) ** 2
+
+                #print(score)
+        print(score)
+    return scores.sum(), scores
 
 #%% load data
 PATH = pathlib.Path()
@@ -153,11 +161,14 @@ for zone in zones:
         
         sim = df_sim.loc[:, idx[zone, p, "original", :]]
         
-        df_scores.loc[p, idx[zone,"VARS"]] = nabqr.variogram_score_R_multivariate(sim.values.T, actuals.squeeze())[0]
+        df_scores.loc[p, idx[zone,"VARS"]] = nabqr.variogram_score_R_multivariate(sim.values.T, actuals.squeeze(),t1 = 24, t2 = 48)[0]
         
         df_scores.loc[p, idx[zone,"CRPS"]] = nabqr.calculate_crps(actuals.squeeze(), sim.values)
 
-#%% plots
+
+
+#%%
+
 
 for zone in zones:
     fig, ax = plt.subplots(figsize = (14,8), layout = "tight")
