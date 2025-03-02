@@ -2,6 +2,8 @@ import unittest
 import numpy as np
 import scipy.stats as stats
 
+from collections import namedtuple
+
 
 
 #%% quantile models
@@ -46,7 +48,7 @@ class quantile_model():
         
         resids = stats.norm().ppf(pseudo_resids)
         
-        return pseudo_resids, resids
+        return resids, pseudo_resids
     
     def back_transform(self, est_quantiles, resids):
         
@@ -70,7 +72,7 @@ class quantile_model():
             self.fit(est_quantiles[i,:])
             orig[i, :] = np.array([self.backward(obs) for obs in pseudo_resids[i,:]] ).squeeze()
         
-        return pseudo_resids, orig
+        return orig, pseudo_resids
 
 class constant_model(quantile_model):
     
