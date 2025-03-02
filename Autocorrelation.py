@@ -13,7 +13,50 @@ import pathlib
 import Code.quantiles as qm
 
 from pandas import IndexSlice as idx
+from itertools import product
 
+#%%
+def get_forecast(modelres, resids, N_step = 24, N_sim = 0, alpha = 0.1):
+    # makes an n-step forecast using the fitter model
+    #    model should ideally be refit every forecast, but SARMA model are relatively simple, so should be fine 
+    # model: (for now) stastmodels SARIMAX model fit result
+    # resids: (n,) array of residuals in normal space
+    # N: number of data points to forecast
+    # Return_sim: number of forecast simulations to make
+    
+    res = np.zeros((len(resids), 3))
+    sim_res = np.zeros((len(resids), N_sim))
+    
+    #simulate first chunk if needed
+    
+    if N_sim > 0: 
+        sim_res[:N_step, :] = modelres.simulate(nsimulations = N_step, repetitions = N_sim)
+    
+    for k in range(N_step, len(resids) - N_step, N_step):
+        # seems to take a bit longer to fit, all data might not be need
+        
+        min_k = max(k - 10 * N_step,0)
+        modelres.apply(resids[min_k:k])
+        
+        tmp = modelres.get_forecast(N_step)
+        res[k:k + N_step,:] = tmp.summary_frame(alpha = alpha).values[:,[0,2,3]] # discard mean_se
+        
+        if N_sim > 0:
+            sim_res[k:k + N_step, :] = modelres.simulate(nsimulations = N_step, repetitions = N_sim, anchor = "end")
+    
+    #get last chunk if needed
+    last = (len(resids) // N_step) * N_step
+    k_last = len(resids) - last
+    
+    if k_last < N_step:
+        modelres.apply(resids[:last])
+        
+        tmp = modelres.get_forecast(k_last)
+        res[last:,:] = tmp.summary_frame(alpha = alpha).values[:,[0,2,3]] # discard mean_se
+        if N_sim > 0:
+            sim_res[last:, :] = modelres.simulate(nsimulations = k_last, repetitions = N_sim, anchor = "end")
+            
+    return res, sim_res
 
 #%% load data
 PATH = pathlib.Path()
@@ -35,65 +78,51 @@ for zone in zones:
     df_zone = data[zone]
     
     quant_est = qm.piecewise_linear_model(quantiles, data[zone].values.min(), data[zone].values.max())
-    _, resids = quant_est.transform(df_zone["Quantiles"].values, df_zone["Observed"].values.squeeze())
+    resids, _ = quant_est.transform(df_zone["Quantiles"].values, df_zone["Observed"].values.squeeze())
     
     data_resids[zone] = resids
 
 #%% individual SARMA models.
 
-df_individual = pd.DataFrame(index = data.index,
-                             columns = pd.MultiIndex.from_product([zones, ("normal", "original"),("estimate","0.05", "0.95")]),
-                             dtype = np.float64
-)
+
+horizons = (6,12,24)
+N_sim = 10
 
 df_forecast = pd.DataFrame(index = data.index,
-                           columns = pd.MultiIndex.from_product([zones, ("normal", "original"),("estimate","0.05", "0.95")]),
+                           columns = pd.MultiIndex.from_product([zones, horizons, ("normal", "original"), ("estimate", "upper prediction", "lower prediction")]),
                            dtype = np.float64
 )
 
-N_forecast = 24
+df_sim = pd.DataFrame(index = data.index,
+                           columns = pd.MultiIndex.from_product([zones, horizons, ("normal", "original"), np.arange(N_sim)]),
+                           dtype = np.float64
+) 
 
-for zone in zones:
-    print(zone)
-    df_zone = data[zone]
+
+for zone, horizon in product(zones, horizons):
+    print(zone, horizon)
     
-    quant_est = qm.piecewise_linear_model(quantiles, data[zone,"Observed"].values.min()-1, data[zone,"Observed"].values.max()*1.1)
-    _, resids = quant_est.transform(df_zone["Quantiles"].values, df_zone["Observed"].values.squeeze())
+    resids = data_resids[zone]
     
-    
-    model = sm.tsa.SARIMAX(resids, order = (1,0,1), seasonal_order=(1,0,1,24))
+    model = model = sm.tsa.SARIMAX(resids, order = (1,0,1), seasonal_order=(1,0,1,24))
     res = model.fit()
     
-    #one step
-    df_individual[zone,"normal","estimate"] = res.get_prediction().predicted_mean
-    conf_int = res.get_prediction().conf_int(alpha = 0.1)
-    df_individual[zone,"normal", "0.05"] = conf_int[:,0]
-    df_individual[zone,"normal", "0.95"] = conf_int[:,1]
+    tmp = get_forecast(res, resids, N_step = horizon, N_sim = N_sim)
     
-    #this needs to be fixed in the quantile estimator
-    for est in df_individual.columns.get_level_values(2).unique():
-        tmp = quant_est.back_transform(df_zone["Quantiles"].values, df_individual[zone,"normal", est].values.squeeze())[1]
-        df_individual[zone,"original", est] = tmp
+    df_forecast.loc[:, idx[zone, horizon, "normal"]] = tmp[0]
+    df_sim.loc[:, idx[zone,horizon,'normal', :]] = tmp[1]
     
-    #forecast
-    for i in np.arange(0,len(resids)-N_forecast, N_forecast):
-        ind = df_forecast.index[i:i+N_forecast]
-        
-        res2 = res.apply(resids[:i])
-        df_forecast.loc[ind, idx[zone,"normal","estimate"]] = res2.get_forecast(N_forecast).predicted_mean
-        df_forecast.loc[ind, idx[zone,"normal",["0.05", "0.95"]]] = res2.get_forecast(N_forecast).conf_int(0.05)
-        
-    # get last chunck
-    i = (len(resids) // N_forecast)*N_forecast + 1
-    ind = df_forecast.index[i:]
+# Back transform results
+#%%
+for zone in zones:
+    actuals = data[zone,"Observed"].values
     
-    res2 = res.apply(resids[:i])
-    df_forecast.loc[ind, idx[zone,"normal","estimate"]] = res2.get_forecast(len(resids) - i).predicted_mean
-    df_forecast.loc[ind, idx[zone,"normal",["0.05", "0.95"]]] = res2.get_forecast(len(resids) - i).conf_int(0.05)
+    quant_est = qm.piecewise_linear_model(quantiles, actuals.min() - 1, actuals.max()*1.1)
     
-    for est in df_forecast.columns.get_level_values(2).unique():
-        tmp = quant_est.back_transform(df_zone["Quantiles"].values, df_forecast[zone,"normal", est].values.squeeze())[1]
-        df_forecast[zone,"original", est] = tmp
+    df_forecast.loc[:, idx[:,:,"original",:]] = quant_est.back_transform(data[zone, "Quantiles"].values, df_forecast.loc[:, idx[:,:,"normal",:]].values)[0]
+    df_sim.loc[:, idx[:,:,"original",:]] = quant_est.back_transform(data[zone, "Quantiles"].values, df_sim.loc[:, idx[:,:,"normal",:]].values)[0]
+    
+
     
 
 #%% plots
