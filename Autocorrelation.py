@@ -197,6 +197,7 @@ for i, zone in enumerate(zones):
 # CRPS
 # this seems harder for nabqr quantiles
 # not done for now
+"""
 for zone in zones:
     y = data[zone,"Observed"].values.squeeze()
     x_min = y.min()-1
@@ -229,7 +230,7 @@ for zone in zones:
     df_scores.loc["NABQR", idx[zone, "CRPS"]] = crps_nabqr / len(y)-1
     df_scores.loc["prediction", idx[zone, "CRPS"]] = crps_pred / len(y)-1
     df_scores.loc["forecast", idx[zone, "CRPS"]] = crps_fore / len(y)-1
-        
+"""
     
 
 
