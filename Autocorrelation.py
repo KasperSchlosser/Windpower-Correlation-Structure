@@ -49,7 +49,7 @@ def variogram_score(x, y, p=0.5, window = 24, offset = 24):
         
         if start + window > n: break
         
-        for i in range(1,window-1):
+        for i in range(0,window-1):
             for j in range(i+1, window):
                 diff = j-i
                 Ediff =  np.mean(np.abs(x[:, start + i] - x[:, start + j])) ** p
@@ -61,7 +61,7 @@ def variogram_score(x, y, p=0.5, window = 24, offset = 24):
                 score += s
 
 
-    return score / n_windows, variogram
+    return score / n_windows, variogram / n_windows
 
 
 def get_forecast(modelres, resids, N_step = 24, N_sim = 0, alpha = 0.1):
@@ -116,29 +116,34 @@ def calc_scores(actuals, predicted, simulations, **kwargs):
     
     return MAE, MSE, VARS, CRPS
 
-def correction(actuals, est_quantiles, quant_est, model = "SARMA", N_step = 24, N_sim = 100, eval_resids = None):
+def correction(actuals, est_quantiles, quant_est, model_type = "SARMA", N_step = 24, N_sim = 100, eval_resids = None):
     
     resids, _ = quant_est.transform(est_quantiles, actuals)
     resids = resids.squeeze()
     
-    if model == "SARMA":
+    if model_type == "SARMA":
         model = sm.tsa.SARIMAX(resids, order = (1,0,1), seasonal_order=(1,0,1,24))
-    elif model == "ARMA":
+    elif model_type == "ARMA":
         model = sm.tsa.SARIMAX(resids, order = (1,0,1))
     model_res = model.fit()
-    
-    if eval_resids is not None:
-        pr = stats.norm().cdf(model_res.resid / np.sqrt(model_res.mse))
-        misc.evaluate_pseudoresids(pr[1:],
-                                   save_path = (PATH / "Figures" / "Correlation Structure" / "Residuals" ),
-                                   name = eval_resids + "_model" + "_after",
-                                   close_figs = True
-                                   )
     
     normal_space = get_forecast(model_res, resids, N_step = N_step, N_sim = N_sim)
     
     orignal_forecast, cdf_forecast = quant_est.back_transform(est_quantiles, normal_space[0])
     original_sim, cdf_sim = quant_est.back_transform(est_quantiles, normal_space[1])
+    
+    if eval_resids is not None:
+        save_path = PATH / "Figures" / "Correlation Structure" / "Residuals"
+        tmp = model_res.summary().tables[1].as_csv()
+        with open(save_path / (eval_resids + "_" + model_type + "_coefs.csv"), 'w') as f:
+            f.write(tmp)
+                
+        pr = stats.norm().cdf(model_res.resid / np.sqrt(model_res.mse))
+        misc.evaluate_pseudoresids(pr[1:],
+                                   save_path = save_path,
+                                   name = eval_resids + "_after",
+                                   close_figs = True
+                                   )
     
     return normal_space, (cdf_forecast, cdf_sim), (orignal_forecast, original_sim)
 
@@ -215,7 +220,7 @@ for zone in zones:
         est_quantiles = data[zone, "Quantiles"].values.squeeze()
         quant_est = qm.piecewise_linear_model(quantiles, actuals.min() - 1, actuals.max()*1.1)
         
-        normal, cdf, original = correction(actuals, est_quantiles, quant_est, model = model, N_step = N_step, N_sim = N_sim, eval_resids= zone + "_" + str(model))
+        normal, cdf, original = correction(actuals, est_quantiles, quant_est, model_type = model, N_step = N_step, N_sim = N_sim, eval_resids= zone + "_" + str(model) + "test")
         
         df_forecast.loc[:, idx[zone, model, "normal", :]] = normal[0]
         df_forecast.loc[:, idx[zone, model, "cdf", :]] = cdf[0]
