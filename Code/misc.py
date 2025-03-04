@@ -66,6 +66,7 @@ def evaluate_pseudoresids(pseudo_resids, index = None, save_path = None, name = 
     acf_vals, conf_acf = sm.tsa.acf(resids, alpha = 0.05)
     pacf_vals, conf_pacf = sm.tsa.pacf(resids, alpha = 0.05)
     
+    
     sns.barplot(x = np.arange(len(acf_vals)), y = acf_vals, ax = axs[0])
     axs[0].fill_between(
         np.arange(len(acf_vals)),
