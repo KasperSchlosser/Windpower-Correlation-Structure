@@ -1,3 +1,7 @@
+import pathlib
+import os
+os.chdir(pathlib.Path("..").resolve())
+
 
 import numpy as np
 import pandas as pd
@@ -5,63 +9,12 @@ import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy.stats as stats
-import properscoring as ps
 
-import pathlib
 
 import Code.quantiles as qm
-import Code.misc as misc
+import Code.evaluation as evaluation
 
 from pandas import IndexSlice as idx
-
-#stolen from nabqr
-def variogram_score(x, y, p=0.5, window = 24, offset = 24):
-    """Calculate the Variogram score for all observations for the time horizon t1 to t2.
-    Modified from the R code in Energy and AI paper: 
-    "An introduction to multivariate probabilistic forecast evaluation" by Mathias B.B. et al.
-    Here we use t1 -> t2 as our forecast horizon.
-    
-    Parameters
-    ----------
-    x : numpy.ndarray
-        Ensemble forecast (m x k)
-    y : numpy.ndarray
-        Actual observations (k,)
-    p : float, optional
-        Power parameter, by default 0.5
-    t1 : int, optional
-        Start hour (inclusive), by default 12
-    t2 : int, optional
-        End hour (exclusive), by default 36
-
-    Returns
-    -------
-    tuple
-        (score, score_list) Overall score and list of individual scores
-    """
-    m,n = x.shape
-    
-    score = 0
-    variogram = np.zeros((window,window))
-    n_windows = (n - offset) // window 
-    
-    for start in range(offset, n, window):
-        
-        if start + window > n: break
-        
-        for i in range(0,window-1):
-            for j in range(i+1, window):
-                diff = j-i
-                Ediff =  np.mean(np.abs(x[:, start + i] - x[:, start + j])) ** p
-                Adiff = np.abs(y[start + i] - y[start + j]) ** p
-                               
-                s = 1/diff * (Adiff - Ediff) ** 2
-                variogram[i,j] = s
-                variogram[j,i] = s
-                score += s
-
-
-    return score / n_windows, variogram / n_windows
 
 
 def get_forecast(modelres, resids, N_step = 24, N_sim = 0, alpha = 0.1):
@@ -106,15 +59,7 @@ def get_forecast(modelres, resids, N_step = 24, N_sim = 0, alpha = 0.1):
             
     return res, sim_res
 
-def calc_scores(actuals, predicted, simulations, **kwargs):
-    #maybe return dict?
-    
-    MAE = np.mean(np.abs(predicted - actuals))
-    MSE = np.mean((predicted - actuals)**2)
-    VARS = variogram_score(sim.values.T, actuals.squeeze(), **kwargs)[0]
-    CRPS = np.mean(ps.crps_ensemble(actuals.squeeze(), sim.values))
-    
-    return MAE, MSE, VARS, CRPS
+
 
 def correction(actuals, est_quantiles, quant_est, model_type = "SARMA", N_step = 24, N_sim = 100, eval_resids = None):
     
@@ -134,12 +79,12 @@ def correction(actuals, est_quantiles, quant_est, model_type = "SARMA", N_step =
     
     if eval_resids is not None:
         save_path = PATH / "Figures" / "Correlation Structure" / "Residuals"
-        tmp = model_res.summary().tables[1].as_csv()
+        tmp = model_res.summary().tables[1].as_csv() 
         with open(save_path / (eval_resids + "_" + model_type + "_coefs.csv"), 'w') as f:
             f.write(tmp)
                 
         pr = stats.norm().cdf(model_res.resid / np.sqrt(model_res.mse))
-        misc.evaluate_pseudoresids(pr[1:],
+        evaluation.evaluate_pseudoresids(pr[1:],
                                    save_path = save_path,
                                    name = eval_resids + "_after",
                                    close_figs = True
@@ -148,6 +93,8 @@ def correction(actuals, est_quantiles, quant_est, model_type = "SARMA", N_step =
     return normal_space, (cdf_forecast, cdf_sim), (orignal_forecast, original_sim)
 
 #%% load data
+#lets crash
+
 PATH = pathlib.Path()
 
 data = pd.read_pickle( PATH / "Data" / ("NABQR_results_full.pkl" ))
@@ -161,7 +108,7 @@ for zone in zones:
 
 models = ["SARMA", "ARMA"]
 N_step = 24
-N_sim = 300
+N_sim = 500
     
 df_forecast = pd.DataFrame(index = data.index,
                            columns = pd.MultiIndex.from_product([zones, ["nabqr"] + models, ("normal", "cdf", "original"), ("estimate", "lower prediction", "upper prediction")]),
@@ -177,7 +124,7 @@ df_resids = pd.DataFrame(index = data.index,
                          dtype = np.float64
 )
 
-#%% naqbqr
+#%% nabqr
 
 for par, val in zip(("estimate", "lower prediction", "upper prediction"), (0.5,0.05,0.95)):
     df_forecast.loc[:, idx[:,"nabqr","normal", par]] = stats.norm().ppf(val)
@@ -204,14 +151,13 @@ for zone in zones:
     df_resids.loc[:, idx[zone, "cdf"]] = tmp[1].squeeze()
     
     #evaluate resids
-    misc.evaluate_pseudoresids(df_resids.loc[:, idx[zone, "cdf"]].values.squeeze(),
+    evaluation.evaluate_pseudoresids(df_resids.loc[:, idx[zone, "cdf"]].values.squeeze(),
                                save_path = (PATH / "Figures" / "Correlation Structure" / "Residuals" ),
                                name = zone + "_before",
                                close_figs = True
                                )
     
 #%%
-
 for zone in zones:
     print(zone)
     for model in models:
@@ -237,13 +183,17 @@ df_scores = pd.DataFrame(index = ["nabqr"] + list(models),
                          dtype = float)
 
 for zone in zones:
+    print(zone)
+    #weights = evaluation.variogram_weight(df_sim.loc[:, idx[zone, "nabqr", "original", :]].values)
+    
     for p in df_scores.index:
-        
-        actuals = data[zone,"Observed"].values.squeeze()
+        print(p)
+        actuals = df_resids.loc[:,idx[zone, "original"]].values.squeeze()
         predicted = df_forecast.loc[:,idx[zone, p, "original", "estimate"]].values
         sim = df_sim.loc[:, idx[zone, p, "original", :]]
         
-        scores = calc_scores(actuals, predicted, sim.values)
+        #scores = evaluation.calc_scores(actuals, predicted, sim.values, VARS_kwargs = {"weights": weights})
+        scores = evaluation.calc_scores(actuals, predicted, sim.values)
         
         df_scores.loc[p, idx[zone, :]] = scores
 
@@ -429,9 +379,12 @@ for i, zone in enumerate(zones):
         actuals = data[zone,"Observed"].values.squeeze()
         sim = df_sim.loc[:, idx[zone, p, "original", :]]
         
-        variogram = variogram_score(sim.values.T, actuals)[1]
+        score, variogram = evaluation.variogram_score(sim.values, actuals)
+        #variogram = np.log(variogram)
+        np.fill_diagonal(variogram, 0)
         
-        if p == "nabqr": c_range.append((0,variogram.max()))
+        if p == "nabqr": c_range.append((variogram.min(),variogram.max()))
+        
         
         cbar = False
         if j == len(df_scores.index)-1: cbar = True
@@ -446,4 +399,3 @@ for i, zone in enumerate(zones):
         if j == 0: axes[i,j].set_ylabel(zone)
 
 fig.savefig( (PATH / "Figures" / "Correlation Structure" / "variograms.png" ))
-
