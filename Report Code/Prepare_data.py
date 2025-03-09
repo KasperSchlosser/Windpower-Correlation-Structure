@@ -31,8 +31,8 @@ PATH = Path()
 #%% Load Data
 # Finds ensembles and observations
 
-ensembles = list((PATH / "Data" / "Ensembles").glob("*"))
-observations = list((PATH / "Data" / "Observations").glob("*wind*"))
+ensembles = list((PATH.parent / "Data" / "Ensembles").glob("*"))
+observations = list((PATH.parent / "Data" / "Observations").glob("*wind*"))
 
 
 dfs = {}
