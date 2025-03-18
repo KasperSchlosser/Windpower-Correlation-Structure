@@ -1,0 +1,20 @@
+name: Windforecast
+channels:
+ - conda-forge
+dependencies:
+ - python>=3.10,<3.13
+ - spyder
+ - numpy
+ - pandas
+ - scipy
+ - matplotlib
+ - scienceplots
+ - properscoring
+ - r
+ - r-quantreg
+ - r-readr
+ - pip
+ - pip:
+   - tensorflow
+   - tensorflow-probability
+   - nabqr
