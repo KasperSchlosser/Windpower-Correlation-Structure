@@ -4,11 +4,13 @@ channels:
 dependencies:
  - python>=3.10,<3.13
  - spyder
- - numpy
+ - numpy<2.1
  - pandas
  - scipy
  - matplotlib
+ - statsmodels = 0.14.3
  - scienceplots
+ - seaborn
  - properscoring
  - r
  - r-quantreg
