@@ -106,7 +106,7 @@ for zone in zones:
 
 models = ["SARMA", "ARMA"]
 N_step = 24
-N_sim = 300
+N_sim = 30
 burn_in = 240
     
 df_forecast = pd.DataFrame(index = data.index,
@@ -118,6 +118,8 @@ df_sim = pd.DataFrame(index = data.index,
                            columns = pd.MultiIndex.from_product([zones, ["nabqr"] + models, ("normal", "cdf", "original"), np.arange(N_sim)]),
                            dtype = np.float64
 )
+
+
 df_resids = pd.DataFrame(index = data.index,
                          columns = pd.MultiIndex.from_product([zones, ("normal", "cdf", "original")]),
                          dtype = np.float64
@@ -198,7 +200,21 @@ for zone in zones:
         scores = evaluation.calc_scores(actuals, predicted, sim)
         
         df_scores.loc[p, idx[zone, :]] = scores
+#%%
+df_scores.to_csv( PATH / "Results" / "Forecast Evaluation" / "scores.csv")
+df_scores.to_pickle( PATH / "Results" / "Forecast Evaluation" / "scores.pkl")
 
+df_scores.T.style\
+    .format(precision = 2)\
+    .highlight_min(axis = 1, props = "font-weight:bold")\
+    .to_latex(PATH / "Results" / "Forecast Evaluation" / "scores.tex",
+              caption = "Model scores for each zone",
+              label = "fig:forecasteval:scores",
+              hrules = True,
+              clines = "skip-last;data",
+              position = "h",
+              position_float = "centering",
+              convert_css = True)
 
 #%% forecasts in orignal space
 

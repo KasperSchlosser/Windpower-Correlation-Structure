@@ -122,14 +122,13 @@ class piecewise_linear_model(quantile_model):
         
         conds = (y >= self.q_vals[:-1]) & (y < self.q_vals[1:])
         vals = self.coefs * (y - self.q_vals[:-1]) / self.diffs + self.quantiles[:-1]
-        return vals[conds]
+        return vals[conds][0]
     
     def backward(self, u):
         
         conds = (u >= self.quantiles[:-1]) & (u < self.quantiles[1:])
         vals = self.diffs * (u-self.quantiles[:-1]) / self.coefs + self.q_vals[:-1]
-
-        return vals[conds]
+        return vals[conds][0]
 
 #%% test everything works
 class TestQuantileModels(unittest.TestCase):

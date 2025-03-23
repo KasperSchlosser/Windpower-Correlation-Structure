@@ -1,6 +1,5 @@
 # i want the original data in the repo
 !*.csv
 !*.pkl
-!Ensembles/**/*
-!Observations/**/*
+!Raw Data/**/*
 !NABQR Results/**/*
