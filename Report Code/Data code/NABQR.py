@@ -12,7 +12,7 @@ quantiles = np.arange(0.01, 1,0.25)
 quantiles_str = [f'{x:.02f}' for x in quantiles]
 pipeline_args = {
     "training_size": 0.8,
-    "epochs": 2,
+    "epochs": 150,
     "quantiles_taqr": quantiles 
     }
 
@@ -22,6 +22,8 @@ save_path = PATH.parents[1] / "Data" / "NABQR"
 
 data = pd.read_pickle(load_path / "Cleaned Data.pkl")
 
+zones = data.columns.get_level_values(0).unique()
+
 #%% nabqr
 
 
@@ -30,8 +32,7 @@ estimated_quantiles = {}
 actuals = {}
 beta_parameters = {}
 original_ensembles = {}
-res = {}
-for zone in data.columns.get_level_values(0).unique():
+for zone in zones:
     
         c_ens, est_q, act, beta, orig  = nabqr.pipeline(
             data[zone,"Ensembles"],
@@ -39,36 +40,41 @@ for zone in data.columns.get_level_values(0).unique():
             name = zone,
             **pipeline_args
         )
-        
-        c_ens.columns = ["Corrected Ensemble " + x for x in c_ens.columns]
-        est_q.coloumns = quantiles_str
+        c_names = ["Corrected Ensemble " + str(x+1) for x in c_ens.columns]
+        c_ens.columns = c_names
+        est_q.columns = quantiles_str
         act.name = "Value"
+        beta = pd.concat([pd.DataFrame(ar, columns = c_ens.columns) for ar in beta], axis = 1, keys = quantiles_str)
+        orig = orig.loc[c_ens.index,:]
+
+        corrected_ensembles[zone] = c_ens
+        estimated_quantiles[zone] = est_q
+        actuals[zone] = act
+        beta_parameters[zone] = beta
+        original_ensembles[zone] = orig
         
-        beta.con
+
         
-        
-        res[zone] = pd.concat(tmp, axis = 1, keys = ["Original Ensemble", "Corrected Ensembles", "Estimated Quantiles", "Observed Value", "Beta Parameter"])
-        
+corrected_ensembles = pd.concat(corrected_ensembles.values(), axis = 1, keys = zones)
+estimated_quantiles = pd.concat(estimated_quantiles.values(), axis = 1, keys = zones)
+actuals = pd.concat(actuals.values(), axis = 1, keys = zones)
+beta_parameters = pd.concat(beta_parameters.values(), axis = 1, keys = zones)
+original_ensembles = pd.concat(original_ensembles.values(), axis = 1, keys = zones)
 
 
 #%%
-"""
-        # Needs to be change if finer quantiles are used
-        estimated_quantiles.columns = [f'{x:.02f}' for x in pipeline_args["quantiles_taqr"]]
-        actual.name = "Observed"
-        
-        tmp = pd.concat((estimated_quantiles, actual), axis = 1, keys = ["Quantiles", "Observed"])
-        tmp.to_csv(PATH / "Data" / "NABQR Results" / (zone + ".csv" ))
-        tmp.to_pickle(PATH / "Data" / "NABQR Results" / (zone + ".pkl" ))
+corrected_ensembles.to_csv(save_path / "corrected_ensembles.csv")
+corrected_ensembles.to_pickle(save_path / "corrected_ensembles.pkl")
 
-#%% Make df with all data
+estimated_quantiles.to_csv(save_path / "estimated_quantiles.csv")
+estimated_quantiles.to_pickle(save_path / "estimated_quantiles.pkl")
 
-datafiles = list((PATH / "Data" / "NABQR Results").glob("DK*pkl"))
-files = [pd.read_pickle(f) for f in datafiles]
-names = [f.stem for f in datafiles]
+actuals.to_csv(save_path / "actuals.csv")
+actuals.to_pickle(save_path / "actuals.pkl")
 
-data_big = pd.concat(files, axis = 1, keys = names)
+beta_parameters.to_csv(save_path / "beta_parameters.csv")
+beta_parameters.to_pickle(save_path / "beta_parameters.pkl")
 
-data_big.to_pickle(PATH / "Data" / ("NABQR_results_full.pkl" ))
-data_big.to_csv(PATH / "Data" / ("NABQR_results_full.csv" ))
-        """
+original_ensembles.to_csv(save_path / "original_ensembles.csv")
+original_ensembles.to_pickle(save_path / "original_ensembles.pkl")
+
