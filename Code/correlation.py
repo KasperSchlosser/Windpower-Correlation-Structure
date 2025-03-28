@@ -14,8 +14,8 @@ class correlation_model():
         #assume univariate
         
         N = len(data)
-        forecast = pd.DataFrame(columns = ["estimate", "lower Interval", "upper interval"], index = data.index, dtype = np.float64)
-        simulation = pd.DataFrame(columns = ['sim' + str(x+1) for x in range(n_sim)], index = data.index, dtype = np.float64)
+        forecast = pd.DataFrame(columns = ["Estimate", "Lower interval", "Upper interval"], index = data.index, dtype = np.float64)
+        simulation = pd.DataFrame(columns = ['Simulation' + str(x+1) for x in range(n_sim)], index = data.index, dtype = np.float64)
         
         for start in range(burnin, N, horizon):
             
