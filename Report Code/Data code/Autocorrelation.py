@@ -101,7 +101,8 @@ estimated_quantiles = pd.read_pickle(load_path / "estimated_quantiles.pkl")
 actuals = pd.read_pickle(load_path / "actuals.pkl")
 
 zones = actuals.columns.get_level_values(0).unique()
-quantiles = estimated_quantiles.columns.get_level_values(1).unique().values
+quantiles_str = [x for x in estimated_quantiles.columns.get_level_values(1).unique().values]
+quantiles = [float(x) for x in quantiles_str]
 date_index = actuals.index
 
 
@@ -124,7 +125,7 @@ zone_limits ={
 
 qm_params = {zone: (quantiles, *zone_limits[zone]) for zone in zones}
 
-untransformed_sarma_params = {zone: {"order": (1,0,1), "seasonal_order": (1,0,1,24), "n_sim": N_sim} for zone in zones}
+untransformed_sarma_params = {zone: {"order": (1,0,1), "trend":"c", "n_sim": N_sim} for zone in zones}
 sarma_params = {zone: {"order": (1,0,1), "seasonal_order": (1,0,1,24),"n_sim": N_sim} for zone in zones}
 nabqr_params = {zone: {"n_sim": N_sim} for zone in zones}
 
@@ -145,7 +146,6 @@ for zone in zones:
     
     models["Untransformed SARMA"][zone] = pipeline.pipeline(
         corr_models.correlation_sarma(**untransformed_sarma_params[zone]),
-        q_models.piecewise_linear_model(*qm_params[zone])
     )
     
     models["SARMA"][zone] =  pipeline.pipeline(
@@ -159,13 +159,13 @@ for zone in zones:
 forecast_col = pd.MultiIndex.from_product([
     list(models.keys()),
     zones,
-    ("Normal", "Cdf", "Original"),
+    ("Original", "Cdf", "Normal"),
     ("Observation", "Estimate", "Lower prediction", "Upper prediction")
 ])
 sim_col = pd.MultiIndex.from_product([
     list(models.keys()),
     zones,
-    ("Normal", "Cdf", "Original"),
+    ("Original", "Cdf", "Normal"),
     ("Simulation " + str(x+1) for x in range(N_sim))
 ])
 
@@ -177,6 +177,7 @@ df_sim = pd.DataFrame(index = date_index, columns = sim_col, dtype = np.float64)
 for model in models.keys():
     for zone in models[model]:
         
+        print(model, zone)
         est_q = estimated_quantiles[zone]
         act = actuals[zone]
         
@@ -185,83 +186,13 @@ for model in models.keys():
         df_sim.loc[:, idx[model,zone, :]] = tmp[1].values
         
 
-#%%
-breakybreaky
+#%% save data
 
-models = ["SARMA", "ARMA"]
-N_step = 24
-N_sim = 10
-burn_in = 240
-    
-df_forecast = pd.DataFrame(index = data.index,
-                           columns = pd.MultiIndex.from_product([zones, ["nabqr"] + models, ("normal", "cdf", "original"), ("estimate", "lower prediction", "upper prediction")]),
-                           dtype = np.float64
-)
+df_forecast.to_csv(save_path / "forecasts.csv")
+df_forecast.to_pickle(save_path / "forecasts.pkl")
 
-df_sim = pd.DataFrame(index = data.index,
-                           columns = pd.MultiIndex.from_product([zones, ["nabqr"] + models, ("normal", "cdf", "original"), np.arange(N_sim)]),
-                           dtype = np.float64
-)
-
-df_resids = pd.DataFrame(index = data.index,
-                         columns = pd.MultiIndex.from_product([zones, ("normal", "cdf", "original")]),
-                         dtype = np.float64
-)
-
-#%% nabqr
-
-for par, val in zip(("estimate", "lower prediction", "upper prediction"), (0.5,0.05,0.95)):
-    df_forecast.loc[:, idx[:,"nabqr","normal", par]] = stats.norm().ppf(val)
-    
-df_sim.loc[:, idx[:, "nabqr", "normal", :]] = stats.norm().rvs((len(data), len(zones) * N_sim))
-
-#convert to original space
-for zone in zones:
-    act = actuals[zone].values
-    eq = estimated_quantiles[zone].values.squeeze()
-    quant_est = qm.piecewise_linear_model(quantiles, act.min() - 1, act.max()*1.1)
-    
-    tmp = quant_est.back_transform(eq, df_forecast.loc[:, idx[zone,"nabqr","normal", :]])
-    df_forecast.loc[:, idx[zone,"nabqr","original", :]], df_forecast.loc[:, idx[zone,"nabqr","cdf", :]] = tmp
-    
-    tmp = quant_est.back_transform(eq, df_sim.loc[:, idx[zone,"nabqr","normal", :]])
-    df_sim.loc[:, idx[zone,"nabqr","original", :]], df_sim.loc[:, idx[zone,"nabqr","cdf", :]] = tmp
-    
-    #also fill resid while we are at it
-    tmp = quant_est.transform(eq, act)
-    
-    df_resids.loc[:, idx[zone, "original"]] = act
-    df_resids.loc[:, idx[zone, "normal"]] = tmp[0].squeeze()
-    df_resids.loc[:, idx[zone, "cdf"]] = tmp[1].squeeze()
-    
-    #evaluate resids
-    evaluation.evaluate_pseudoresids(df_resids.loc[:, idx[zone, "cdf"]].values.squeeze(),
-                               save_path = (PATH / "Figures" / "Correlation Structure" / "Residuals" ),
-                               name = zone + "_before",
-                               close_figs = True
-                               )
-    
-#%% simulations
-for zone in zones:
-    print(zone)
-    for model in models:
-        print(model)
-        act = actuals[zone].values.squeeze()
-        eq = estimated_quantiles[zone].values.squeeze()
-        quant_est = qm.piecewise_linear_model(quantiles, act.min() - 1, act.max()*1.1)
-        
-        normal, cdf, original = correction(act, eq, quant_est,
-                                           model_type = model, burn_in = burn_in,
-                                           N_step = N_step, N_sim = N_sim,
-                                           eval_resids= zone + "_" + str(model) + "test")
-        
-        df_forecast.loc[:, idx[zone, model, "normal", :]] = normal[0]
-        df_forecast.loc[:, idx[zone, model, "cdf", :]] = cdf[0]
-        df_forecast.loc[:, idx[zone, model, "original", :]] = original[0]
-        
-        df_sim.loc[:, idx[zone, model, "normal", :]] = normal[1]
-        df_sim.loc[:, idx[zone, model, "cdf", :]] = cdf[1]
-        df_sim.loc[:, idx[zone, model, "original", :]] = original[1]
+df_sim.to_csv(save_path / "simulations.csv")
+df_sim.to_pickle(save_path / "simulations.pkl")
         
 
 #%% scores
@@ -284,18 +215,3 @@ for zone in zones:
         scores = evaluation.calc_scores(act, predicted, sim)
         
         df_scores.loc[p, idx[zone, :]] = scores
-#%%
-
-df_resids.to_csv(save_path / "observations.csv")
-df_resids.to_pickle(save_path / "observations.pkl")
-
-df_forecast.to_csv(save_path / "forecasts.csv")
-df_forecast.to_pickle(save_path / "forecasts.pkl")
-
-df_sim.to_csv(save_path / "simulations.csv")
-df_sim.to_pickle(save_path / "simulations.pkl")
-
-#needs to be made in a seperate 
-df_scores.to_csv( save_path / "scores.csv")
-df_scores.to_pickle( save_path /  "scores.pkl")
-

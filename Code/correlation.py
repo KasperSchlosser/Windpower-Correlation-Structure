@@ -39,8 +39,7 @@ class correlation_model():
             train_idx = data.index[:start]
             new_idx = data.index[start:start+n_window]
             
-            self.fit(data[train_idx])
-            
+            self.fit(data[train_idx].values)
             
             forecast.loc[new_idx, :] = self.predict()[:len(new_idx),:]
             simulation.loc[new_idx, :] = self.simulate()[:len(new_idx),:]
@@ -49,18 +48,18 @@ class correlation_model():
         
 class correlation_sarma(correlation_model):
     
-    def __init__(self, order = (1,0,0), seasonal_order = (0,0,0,0), **kwargs):
+    def __init__(self, order = (1,0,0), seasonal_order = (0,0,0,0), trend = None, **kwargs):
         
         super().__init__(**kwargs)
         
-        self.model = sm.tsa.SARIMAX(np.zeros(2+seasonal_order[-1]), order = order, seasonal_order = seasonal_order)
-        self.modelres = self.model.fit()
+        self.model = sm.tsa.SARIMAX(np.zeros(2+seasonal_order[-1]), order = order, seasonal_order = seasonal_order, trend = trend)
+        self.modelres = self.model.fit(disp = False)
         
         return
     
     def fit(self, data):
         
-        self.modelres = self.modelres.apply(data, refit = True)
+        self.modelres = self.modelres.apply(data, refit = True, copy_initialization = True)
         
         return
     
@@ -78,7 +77,7 @@ class correlation_sarma(correlation_model):
         mu = forecast.predicted_mean
         interval = forecast.conf_int(self.alpha)
         
-        return np.concatenate((mu.values[:,np.newaxis], interval.values), axis = 1)
+        return np.concatenate((mu[:,np.newaxis], interval), axis = 1)
     
 class correlation_nabqr(correlation_model):
     

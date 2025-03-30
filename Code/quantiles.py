@@ -127,7 +127,10 @@ class piecewise_linear_model(quantile_model):
         
         conds = (u >= self.quantiles[:-1]) & (u < self.quantiles[1:])
         vals = self.diffs * (u-self.quantiles[:-1]) / self.coefs + self.q_vals[:-1]
-        return vals[conds][0]
+        
+        res = vals[conds]
+        if len(res) == 0: return np.nan
+        return res
 
 #%% test everything works
 class TestQuantileModels(unittest.TestCase):
