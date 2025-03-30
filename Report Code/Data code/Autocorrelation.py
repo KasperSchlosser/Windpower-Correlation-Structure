@@ -7,11 +7,12 @@ import pandas as pd
 import statsmodels.api as sm
 import scipy.stats as stats
 
-import Code.quantiles as qm
-import Code.evaluation as evaluation
-
 from pandas import IndexSlice as idx
 
+import Code.quantiles as q_models
+import Code.evaluation as evaluation
+import Code.pipeline as pipeline
+import Code.correlation as corr_models
 
 def get_forecast(modelres, resids, N_step = 24, N_sim = 0, alpha = 0.1, burn_in = 240):
     # makes an n-step forecast using the fitter model
@@ -94,21 +95,98 @@ PATH = pathlib.Path()
 load_path = PATH / "Data" / "NABQR"
 save_path = PATH / "Data" / "Autocorrelation"
 
+N_sim = 10
 
-data = pd.read_pickle( load_path /  "NABQR_results_full.pkl" )
 estimated_quantiles = pd.read_pickle(load_path / "estimated_quantiles.pkl")
 actuals = pd.read_pickle(load_path / "actuals.pkl")
 
 zones = actuals.columns.get_level_values(0).unique()
 quantiles = estimated_quantiles.columns.get_level_values(1).unique().values
+date_index = actuals.index
+
 
 # there is some quantile crossings
 # i will try to fix by just sorting
 # might work?
 for zone in zones:
     estimated_quantiles[zone] = np.sort(estimated_quantiles[zone].values)
+
+
+#%% parameters for models
+#max values for each zone
+# format: (min, max)
+zone_limits ={
+    "DK1-offshore": (0, 1250),
+    "DK1-onshore": (0,3575),
+    "DK2-offshore": (0,1000),
+    "DK2-onshore": (0, 640)
+    }
+
+qm_params = {zone: (quantiles, *zone_limits[zone]) for zone in zones}
+
+untransformed_sarma_params = {zone: {"order": (1,0,1), "seasonal_order": (1,0,1,24), "n_sim": N_sim} for zone in zones}
+sarma_params = {zone: {"order": (1,0,1), "seasonal_order": (1,0,1,24),"n_sim": N_sim} for zone in zones}
+nabqr_params = {zone: {"n_sim": N_sim} for zone in zones}
+
+
+#%% make models
+
+models = {
+    "NABQR" : {},
+    "Untransformed SARMA": {},
+    "SARMA" : {}
+    }
+
+for zone in zones:
+    models["NABQR"][zone] = pipeline.pipeline(
+        corr_models.correlation_nabqr(**nabqr_params[zone]),
+        q_models.piecewise_linear_model(*qm_params[zone])
+    )
     
+    models["Untransformed SARMA"][zone] = pipeline.pipeline(
+        corr_models.correlation_sarma(**untransformed_sarma_params[zone]),
+        q_models.piecewise_linear_model(*qm_params[zone])
+    )
+    
+    models["SARMA"][zone] =  pipeline.pipeline(
+        corr_models.correlation_sarma(**sarma_params[zone]),
+        q_models.piecewise_linear_model(*qm_params[zone])
+    )
+
+
+#%% make data frames
+
+forecast_col = pd.MultiIndex.from_product([
+    list(models.keys()),
+    zones,
+    ("Normal", "Cdf", "Original"),
+    ("Observation", "Estimate", "Lower prediction", "Upper prediction")
+])
+sim_col = pd.MultiIndex.from_product([
+    list(models.keys()),
+    zones,
+    ("Normal", "Cdf", "Original"),
+    ("Simulation " + str(x+1) for x in range(N_sim))
+])
+
+df_forecast = pd.DataFrame(index = date_index, columns = forecast_col, dtype = np.float64)
+df_sim = pd.DataFrame(index = date_index, columns = sim_col, dtype = np.float64)
+
 #%%
+
+for model in models.keys():
+    for zone in models[model]:
+        
+        est_q = estimated_quantiles[zone]
+        act = actuals[zone]
+        
+        tmp = models[model][zone].run(est_q, act)
+        df_forecast.loc[:, idx[model,zone, :]] = tmp[0].values
+        df_sim.loc[:, idx[model,zone, :]] = tmp[1].values
+        
+
+#%%
+breakybreaky
 
 models = ["SARMA", "ARMA"]
 N_step = 24
@@ -124,7 +202,6 @@ df_sim = pd.DataFrame(index = data.index,
                            columns = pd.MultiIndex.from_product([zones, ["nabqr"] + models, ("normal", "cdf", "original"), np.arange(N_sim)]),
                            dtype = np.float64
 )
-
 
 df_resids = pd.DataFrame(index = data.index,
                          columns = pd.MultiIndex.from_product([zones, ("normal", "cdf", "original")]),

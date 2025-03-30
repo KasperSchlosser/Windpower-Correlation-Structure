@@ -1,4 +1,6 @@
+# %%
 import pandas as pd
+
 import numpy as np
 
 from pandas import IndexSlice as idx
@@ -10,32 +12,46 @@ class pipeline():
         self.quantile_model = quantile_model
         self.correlation_model = correlation_model
         
-    def run(self, estimated_quantiles, observations, n_sim = 10, **kwargs):
         
+    def run(self, estimated_quantiles, observations, **kwargs):
         
-        res_cols = pd.MultiIndex.from_product((["Orignal", "CDF", "Normal"], ["Observation", "Estimate", "Upper Interval", "Lower Interval"]), names = ["Space", "Result Type"])
-        sim_cols = pd.MultiIndex.from_product((["Orignal", "CDF", "Normal"], ["Simulation" + str(x+1) for x in range(n_sim)]), names = ["Space", "Simulation"])
+        res_cols = pd.MultiIndex.from_product((["Original", "CDF", "Normal"], ["Observation", "Estimate", "Upper Interval", "Lower Interval"]), names = ["Space", "Result Type"])
+        sim_cols = pd.MultiIndex.from_product((
+            ["Original", "CDF", "Normal"],
+            ["Simulation" + str(x+1) for x in range(self.correlation_model.n_sim)]
+            ),
+            names = ["Space", "Simulation"]
+        )
         
         res = pd.DataFrame(index = observations.index, columns = res_cols, dtype = np.float64)
         sim = pd.DataFrame(index = observations.index, columns = sim_cols, dtype = np.float64)
         
         res["Original", "Observation"] = observations
         
-        tmp = self.quantile_model.transform(estimated_quantiles, observations)
-        res.loc[:, idx["Normal", "Observation"]] =  tmp[0]
-        res.loc[:, idx["CDF", "Observation"]] =  tmp[1] 
+        if self.quantile_model is not None:
         
-        tmp = self.correlation_model.transform(res["Normal","Observation"], n_sim = n_sim, **kwargs)
-        res.loc[:, idx["Normal", ["Estimate", "Upper Interval", "Lower Interval"] ]] =  tmp[0]
-        sim.loc[:, idx["Normal", : ]] = tmp[1]
-        
-        tmp = self.quantile_model.back_transform(estimated_quantiles, res["Normal", ["Estimate", "Upper Interval", "Lower Interval"]])
-        res.loc[:, idx["Original", ["Estimate", "Upper Interval", "Lower Interval"] ]] = tmp[0]
-        res.loc[:, idx["CDF", ["Estimate", "Upper Interval", "Lower Interval"] ]] = tmp[1]
-        
-        tmp = self.quantile_model.back_transform(estimated_quantiles, sim["Normal", :])
-        sim.loc[:, idx["Original", : ]] = tmp[0]
-        sim.loc[:, idx["CDF", : ]] = tmp[1]
+            tmp = self.quantile_model.transform(estimated_quantiles.values, observations.values)
+            res.loc[:, idx["Normal", "Observation"]] =  tmp[0]
+            res.loc[:, idx["CDF", "Observation"]] =  tmp[1] 
+            
+            tmp = self.correlation_model.transform(res["Normal","Observation"], **kwargs)
+            res.loc[idx[:], idx["Normal", ["Estimate", "Upper Interval", "Lower Interval"] ]] =  tmp[0]
+            sim.loc[idx[:], idx["Normal", : ]] = tmp[1]
+            
+            tmp = self.quantile_model.back_transform(estimated_quantiles.values,
+                                                     res.loc[idx[:], idx["Normal", ["Estimate", "Upper Interval", "Lower Interval"]]].values)
+            res.loc[idx[:], idx["Original", ["Estimate", "Upper Interval", "Lower Interval"] ]] = tmp[0]
+            res.loc[idx[:], idx["CDF", ["Estimate", "Upper Interval", "Lower Interval"] ]] = tmp[1]
+            
+            tmp = self.quantile_model.back_transform(estimated_quantiles, sim["Normal", :])
+            sim.loc[idx[:], idx["Original", : ]] = tmp[0]
+            sim.loc[idx[:], idx["CDF", : ]] = tmp[1]
+            
+        else:
+            
+            tmp = self.correlation_model.transform(res["Original","Observation"], **kwargs)
+            res.loc[idx[:], idx["Original", ["Estimate", "Upper Interval", "Lower Interval"] ]] =  tmp[0]
+            sim.loc[idx[:], idx["Original", : ]] = tmp[1]
         
         return res, sim
         

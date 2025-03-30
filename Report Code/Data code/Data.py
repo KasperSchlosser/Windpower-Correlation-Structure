@@ -18,6 +18,13 @@ PATH = Path.cwd()
 load_path = PATH.parents[1] / "Data" / "Raw Data" 
 save_path = PATH.parents[1] / "Data" 
 
+# the observed production sometimes goes negivate, only in offshore
+# 0 values will also give problems later
+# for now set make a min value
+# should discuss this
+low_value = 0.01
+
+
 #%% Load Data
 # Finds ensembles and observations
 
@@ -43,6 +50,7 @@ for ens, obs in zip(ensembles, observations):
     #remove tz from ensemble and drop the missing hours from observation
     ens = cleantz(ens)
     obs = obs.dropna()
+    obs[obs < low_value] = low_value
     
     dfs_cleaned[zone] = pd.concat((ens,obs), axis = 1, keys = ["Ensembles", "Observed"])
     
@@ -50,7 +58,6 @@ for ens, obs in zip(ensembles, observations):
 data_cleaned = pd.concat(dfs_cleaned, axis = 1, keys = dfs_cleaned.keys())
 raw_ensembles = pd.concat(raw_ensembles, axis = 1, keys = raw_ensembles.keys())
 raw_observations = pd.concat(raw_observations, axis = 1, keys = raw_observations.keys())
-
 
 data_cleaned.to_pickle(save_path / "Data" / "Cleaned Data.pkl")
 data_cleaned.to_csv(save_path / "Data" / "Cleaned Data.csv")
