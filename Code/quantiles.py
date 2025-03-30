@@ -2,7 +2,6 @@ import unittest
 import numpy as np
 import scipy.stats as stats
 
-from collections import namedtuple
 
 
 
@@ -122,14 +121,16 @@ class piecewise_linear_model(quantile_model):
         
         conds = (y >= self.q_vals[:-1]) & (y < self.q_vals[1:])
         vals = self.coefs * (y - self.q_vals[:-1]) / self.diffs + self.quantiles[:-1]
-        return vals[conds]
+        return vals[conds][0]
     
     def backward(self, u):
         
         conds = (u >= self.quantiles[:-1]) & (u < self.quantiles[1:])
         vals = self.diffs * (u-self.quantiles[:-1]) / self.coefs + self.q_vals[:-1]
-
-        return vals[conds]
+        
+        res = vals[conds]
+        if len(res) == 0: return np.nan
+        return res
 
 #%% test everything works
 class TestQuantileModels(unittest.TestCase):
