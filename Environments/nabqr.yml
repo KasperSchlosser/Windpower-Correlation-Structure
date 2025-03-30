@@ -1,0 +1,12 @@
+name: nabqr
+channels:
+ - conda-forge
+dependencies:
+ - r
+ - r-quantreg
+ - r-readr
+ - pip
+ - pip:
+   - tensorflow
+   - tensorflow-probability
+   - nabqr

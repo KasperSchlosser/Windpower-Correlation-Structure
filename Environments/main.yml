@@ -1,0 +1,13 @@
+name: Windforecast
+channels:
+ - conda-forge
+dependencies:
+ - python
+ - spyder
+ - numpy
+ - pandas
+ - scipy
+ - matplotlib
+ - statsmodels
+ - scienceplots
+ - seaborn
