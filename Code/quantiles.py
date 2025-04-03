@@ -1,28 +1,74 @@
-import unittest
+
 import numpy as np
 import scipy.stats as stats
+import scipy.interpolate as interpolate
 
 
-
-
-#%% quantile models
+# quantile models
 # models estimating cdfs from the nabqr quantiles
 # models fits a function to quantiles model(q) -> F(x)
 # foward takes and observation x and gives resulting quantile:
-#   model.forward(y): F(y) = u
+#   model.cdf(y): F(y) = u
 # Backwards takes from cdf-space back to original space
-# model.backward(u): F^-1(u) = x
+# model.quantile(u): F^-1(u) = x
 
 class quantile_model():
-    def __init__(self, quantiles = (0.5,0.3,0.5,0.7,0.95), dist = stats.norm()):
-        self.quantiles = np.array(quantiles)
+    def __init__(self, quantiles, min_val = None, max_val = None, dist = stats.norm(), *args, **kwargs):
+        
+        quant = np.zeros(len(quantiles)+2)
+        quant[1:-1] = quantiles
+        quant[0] = 0
+        quant[-1] = 1
+        
+        self.quantiles = quant
+        
+        self.max_val = max_val
+        self.min_val = min_val
+        
+        self.dq = self.quantiles[1:] - self.quantiles[:-1]
+        
         self.dist = dist
         
+        return
+        
     def fit(self, est_quantiles):
+        
+        self.q_vals = np.zeros(len(est_quantiles)+2)
+        self.q_vals[1:-1] = est_quantiles
+        
+        self.q_vals[-1] = self.max_val
+        self.q_vals[0] = self.min_val
+        
+        self.dx = self.q_vals[1:] - self.q_vals[:-1]
+        
         return
-    def forward(self, y):
+    
+    def cdf(self, y, *args, **kwargs):
+        if not np.isscalar(y) or not np.isfinite(y): return np.nan
+        
+        if y < self.q_vals[0]: return 0
+        if y > self.q_vals[-1]: return 1
+        
+        return self._cdf(y, *args, **kwargs)
+    
+    def quantile(self, u, *args, **kwargs):
+        if not np.isscalar(u) or not np.isfinite(u): return np.nan
+        
+        if u < self.quantiles[0]: return np.nan
+        if u > self.quantiles[-1]: return np.nan
+        
+        return self._quantiles(u, *args, **kwargs)
+    def pdf(self, y, *args, **kwargs):
+        if not np.isscalar(y) or not np.isfinite(y): return np.nan
+        if y < self.q_vals[0] or y > self.q_vals[-1]: return 0
+        
+        return self._pdf(y, *args, **kwargs)
+    
+    def _cdf(self, y, *args, **kwargs):
         return
-    def backward(self, u):
+    def _quantile(self, u, *args, **kwargs):
+        return
+    def _pdf(self, y, *args, **kwargs):
         return
     
     def transform(self, est_quantiles, actuals: np.array):
@@ -43,7 +89,8 @@ class quantile_model():
         
         for i in range(len(est_quantiles)):
             self.fit(est_quantiles[i,:])
-            pseudo_resids[i, :] = np.array([self.forward(obs) for obs in actuals[i,:]]).squeeze()
+
+            pseudo_resids[:, i] = np.array([self.cdf(obs) for obs in actuals[:,i]]).squeeze()
         
         resids = stats.norm().ppf(pseudo_resids)
         
@@ -64,178 +111,204 @@ class quantile_model():
             est_quantiles = est_quantiles[np.newaxis, :]
             
         pseudo_resids = stats.norm().cdf(resids)
-        
         orig = np.zeros(pseudo_resids.shape)
         
         for i in range(len(est_quantiles)):
             self.fit(est_quantiles[i,:])
-            orig[i, :] = np.array([self.backward(obs) for obs in pseudo_resids[i,:]] ).squeeze()
+            
+            orig[i, :] = np.array([self.quantile(obs) for obs in pseudo_resids[i,:]] ).squeeze()
         
         return orig, pseudo_resids
 
 class constant_model(quantile_model):
-    
-    def fit(self, est_quantiles):
-        self.q = est_quantiles[:]
+    def _cdf(self, y):
+        mask = (y >= self.q_vals[:-1]) & (y < self.q_vals[1:])
         
-    def forward(self, y):
-        tmp = y >= self.q
-        if tmp.any(): 
-            return self.quantiles[tmp][-1]
-        else:
-            return self.quantiles[0]
-    def backward(self, u):
-        tmp = u >= self.quantiles
-        if tmp.any(): return self.q[tmp][-1]
-        else: return self.q[tmp][0]
-     
+        res = self.quantiles[:-1][mask] 
+        return res[0]
+        
+    def _quantile(self, u):
+        mask = (u >= self.quantiles[:-1]) & (u < self.quantiles[1:])
+        
+        res = self.q_vals[:-1][mask]
+        
+        return res[0]
+    
+    # not applicable for this
+    # basically a discrete distribution
+    def _pdf(self, y):
+        return np.nan 
+        
+
 class piecewise_linear_model(quantile_model):
     
-    def __init__(self, quantiles, min_val, max_val):
+    def __init__(self, tail_correction = None, *args, **kwargs):
         
-        super().__init__(quantiles)
+        super().__init__(*args, **kwargs)
         
-        tmp = np.zeros(len(self.quantiles)+2)
-        tmp[1:-1] = self.quantiles
-        tmp[0] = 0
-        tmp[-1] = 1
+        assert tail_correction in (None, "Flat")
+        self.tail_correction = tail_correction
         
-        self.quantiles = tmp
-        
-        self.max_val = max_val
-        self.min_val = min_val
+        return
     
-    
-    def fit(self, est_quantiles):
+    def _get_poly_coef(self, ix, dq, dx):
         
-        self.q_vals = np.zeros(len(est_quantiles)+2)
-        self.q_vals[1:-1] = est_quantiles
-        
-        self.q_vals[-1] = self.max_val
-        self.q_vals[0] = self.min_val
+        match (ix, self.tail_correction):
+            case (0, "Flat"):
+                a = dq / dx**2
+                b = 0
 
-        self.diffs = self.q_vals[1:] - self.q_vals[:-1]
-        self.coefs = self.quantiles[1:] - self.quantiles[:-1]
-    
-    def forward(self, y):
-        
+            case (-1, "Flat"):
+                a = - dq / dx**2
+                b = 2 * dq / dx
+
+            case _: 
+                a = 0
+                b = dq / dx
+
+        return a,b
+
+    def _cdf(self, y):
         conds = (y >= self.q_vals[:-1]) & (y < self.q_vals[1:])
-        vals = self.coefs * (y - self.q_vals[:-1]) / self.diffs + self.quantiles[:-1]
-        return vals[conds][0]
+        
+        ix = np.argmax(conds)
+        if ix == len(conds)-1: ix = -1
+        
+        dq = self.dq[ix]
+        dx = self.dx[ix]
+        
+        x = y - self.q_vals[:-1][ix]
+        base_val = self.quantiles[:-1][ix]
     
-    def backward(self, u):
+        a,b = self._get_poly_coef(ix, dq, dx)
         
+        return a * x**2 + b * x + base_val
+    
+    def _quantile(self, u):
+
         conds = (u >= self.quantiles[:-1]) & (u < self.quantiles[1:])
-        vals = self.diffs * (u-self.quantiles[:-1]) / self.coefs + self.q_vals[:-1]
         
-        res = vals[conds]
-        if len(res) == 0: return np.nan
-        return res
+        ix = np.argmax(conds)
+        
+        dq = self.dq[ix]
+        dx = self.dx[ix]
+        
+        x = u - self.quantiles[:-1][ix]
+        base_val = self.q_vals[:-1][ix]
+        
+        a,b = self._get_poly_coef(ix, dq,dx)
+        
+        if a > 0:
+            res = (-b + np.sqrt(b**2 + 4*a*x)) / (2*a)
+        elif a < 0:
+            res = (-b - np.sqrt(b**2 + 4*a*x)) / (2*a)
+        elif a == 0:
+            res = x / b
+        else:
+            res = np.nan
+        return res + base_val
+    def _pdf(self,y):
+        conds = (y >= self.q_vals[:-1]) & (y < self.q_vals[1:])
+        
+        ix = np.argmax(conds)
+        if ix == len(conds)-1: ix = -1
+        
+        dq = self.dq[ix]
+        dx = self.dx[ix]
+        
+        x = y - self.q_vals[:-1][ix]
+    
+        a,b = self._get_poly_coef(ix, dq, dx)
+        
+        return 2*a*x + b
 
-#%% test everything works
-class TestQuantileModels(unittest.TestCase):
+        
+class spline_model(quantile_model):
+    def fit(self, *args, **kwargs):
+        
+        super().fit(*args, **kwargs)
+        
+        
+        self.model = interpolate.PchipInterpolator(self.q_vals, self.quantiles, extrapolate = False)
+        self.deriv = self.model.derivative(1)
+        
+        return
+    
+    def _cdf(self, y):
+        return self.model(y)
+    def _quantile(self, u):
+        return self.model.solve(u)
+    def _pdf(self, y):
+        return self.deriv(y)
+        
 
-    def setUp(self):
-        self.quantiles = (0.1, 0.5, 0.9)
-        self.est_quantiles = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-        self.actuals = np.array([[1.5, 2.5], [4.5, 5.5], [7.5, 8.5]])
-        self.resids = np.array([[0.1, -0.1], [0.2, -0.2], [0.3, -0.3]])
-        self.min_val = 0
-        self.max_val = 10
+#%% quick tests
 
-    def test_constant_model_forward(self):
-        model = constant_model(self.quantiles)
-        model.fit(self.est_quantiles[0])
-        self.assertEqual(model.forward(2), 0.5)
-        self.assertEqual(model.forward(3), 0.9)
-        self.assertEqual(model.forward(0), 0.1)
+import matplotlib.pyplot as plt
+plt.close('all')
 
-    def test_constant_model_backward(self):
-        model = constant_model(self.quantiles)
-        model.fit(self.est_quantiles[0])
-        self.assertEqual(model.backward(0.5), 2)
-        self.assertEqual(model.backward(0.9), 3)
-        self.assertEqual(model.backward(0.1), 1)
+N = 8
+quantiles = np.sort(stats.uniform().rvs(N))
 
-    def test_piecewise_linear_model_forward(self):
-        model = piecewise_linear_model(self.quantiles, self.min_val, self.max_val)
-        model.fit(self.est_quantiles[0])
-        np.testing.assert_almost_equal(model.forward(2), 0.5)
-        np.testing.assert_almost_equal(model.forward(3), 0.9)
-        np.testing.assert_almost_equal(model.forward(1), 0.1)
+dist1 = stats.norm()
+dist2 = stats.expon()
 
-    def test_piecewise_linear_model_backward(self):
-        model = piecewise_linear_model(self.quantiles, self.min_val, self.max_val)
-        model.fit(self.est_quantiles[0])
-        np.testing.assert_almost_equal(model.backward(0.5), 2)
-        np.testing.assert_almost_equal(model.backward(0.9), 3)
-        np.testing.assert_almost_equal(model.backward(0.1), 1)
+est_q1 = dist1.ppf(quantiles)
+est_q2 = dist2.ppf(quantiles)
 
-    def test_transform_normal_function(self):
-        model = constant_model(self.quantiles)
-        pseudo_resids, resids = model.transform(self.est_quantiles, self.actuals)
-        
-        # Check the shape of the results
-        self.assertEqual(pseudo_resids.shape, self.actuals.shape)
-        self.assertEqual(resids.shape, self.actuals.shape)
+maxval, minval = 20, -20
+models_1 = {
+    "constant": constant_model(quantiles, minval, maxval),
+    "notail": piecewise_linear_model(None, quantiles, minval, maxval),
+    "flat": piecewise_linear_model("Flat", quantiles, minval, maxval),
+    "spline": spline_model(quantiles, minval, maxval)
+}
+maxval, minval = 6, 0
+models_2 = {
+    "constant": constant_model(quantiles, minval, maxval),
+    "notail": piecewise_linear_model(None, quantiles, minval, maxval),
+    "flat": piecewise_linear_model("Flat", quantiles, minval, maxval),
+    "spline": spline_model(quantiles, minval, maxval)
+}
 
-    def test_back_transform_normal_function(self):
-        model = constant_model(self.quantiles)
-        pseudo_resids, orig = model.back_transform(self.est_quantiles, self.resids)
-        
-        # Check the shape of the results
-        self.assertEqual(pseudo_resids.shape, self.resids.shape)
-        self.assertEqual(orig.shape, self.resids.shape)
+X = np.linspace(-19, 19, 1000)
+names = list(models_1.keys())
 
-    def test_transform_correctness_constant_model(self):
-        model = constant_model(self.quantiles)
-        
-        # Expected pseudo residuals and residuals for the given est_quantiles and actuals
-        expected_pseudo_resids = np.array([[0.1, 0.5], [0.1, 0.5], [0.1, 0.5]])
-        
-        # Transform the actuals using the est_quantiles
-        pseudo_resids, resids = model.transform(self.est_quantiles, self.actuals)
-        
-        # Check if the transformed values match the expected values
-        np.testing.assert_almost_equal(pseudo_resids[0], expected_pseudo_resids[0])
+plt.figure(figsize = (14,8))
+plt.subplot(1,2,1)
+for name in names:
+    tmp = models_1[name].transform(est_q1, X)[1]
+    plt.plot(X, tmp)
+plt.plot(X, dist1.cdf(X), color = 'black')
 
-    def test_transform_correctness_piecewise_linear_model(self):
-        model = piecewise_linear_model(self.quantiles, self.min_val, self.max_val)
-        
-        # Expected pseudo residuals and residuals for the given est_quantiles and actuals
-        expected_pseudo_resids = np.array([[0.3, 0.7], [0.3, 0.7], [0.3, 0.7]])
-        
-        # Transform the actuals using the est_quantiles
-        pseudo_resids, resids = model.transform(self.est_quantiles, self.actuals)
-        
-        # Check if the transformed values match the expected values
-        np.testing.assert_almost_equal(pseudo_resids[0], expected_pseudo_resids[0])
+plt.subplot(1,2,2)
+for name in names:
+    models_1[name].fit(est_q1)
+    tmp = [models_1[name].pdf(y) for y in X]
+    plt.plot(X, tmp)
+plt.plot(X, dist1.pdf(X), color = 'black')
+plt.legend(names)
+plt.tight_layout()
 
-    def test_back_transform_correctness_constant_model(self):
-        model = constant_model(self.quantiles)
-        
-        # Expected original values for the given est_quantiles and residuals
-        expected_orig = np.array([[2, 1], [5, 4], [8, 7]])
-        
-        # Back transform the residuals using the est_quantiles
-        pseudo_resids, orig = model.back_transform(self.est_quantiles, self.resids)
-        
-        # Check if the back-transformed values match the expected values
-        for i in range(len(expected_orig)):
-            np.testing.assert_almost_equal(orig[i], expected_orig[i])
+#%%
 
-    def test_back_transform_correctness_piecewise_linear_model(self):
-        model = piecewise_linear_model(self.quantiles, self.min_val, self.max_val)
-        
-        # Expected original values for the given est_quantiles and residuals
-        expected_orig = np.array([[ 2.09956959, 1.90043041], [5.19814927, 4.80185073], [8.29477856, 7.70522144]])
-        
-        # Back transform the residuals using the est_quantiles
-        pseudo_resids, orig = model.back_transform(self.est_quantiles, self.resids)
-        
-        # Check if the back-transformed values match the expected values
-        for i in range(len(expected_orig)):
-            np.testing.assert_almost_equal(orig[i], expected_orig[i])
-        
-if __name__ == '__main__':
-    unittest.main()
+X = np.linspace(-7,7, 1000)
+names = list(models_2.keys())
+
+plt.figure(figsize = (14,8))
+plt.subplot(1,2,1)
+for name in names:
+    tmp = models_2[name].transform(est_q2, X)[1]
+    plt.plot(X, tmp)
+plt.plot(X, dist2.cdf(X), color = 'black')
+
+plt.subplot(1,2,2)
+for name in names:
+    models_2[name].fit(est_q2)
+    tmp = [models_2[name].pdf(y) for y in X]
+    plt.plot(X, tmp)
+plt.plot(X, dist2.pdf(X), color = 'black')
+plt.legend(names)
+plt.tight_layout()
+
+

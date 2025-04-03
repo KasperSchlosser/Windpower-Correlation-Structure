@@ -12,7 +12,7 @@ quantiles = np.arange(0.01, 1, 0.15)
 quantiles_str = [f'{x:.02f}' for x in quantiles]
 pipeline_args = {
     "training_size": 0.8,
-    "epochs": 2,
+    "epochs": 150,
     "quantiles_taqr": quantiles 
     }
 
