@@ -8,11 +8,11 @@ import nabqr
 from pathlib import Path
 
 
-quantiles = np.arange(0.01, 1, 0.15)
+quantiles = np.arange(0.01, 1, 0.49)
 quantiles_str = [f'{x:.02f}' for x in quantiles]
 pipeline_args = {
     "training_size": 0.8,
-    "epochs": 150,
+    "epochs": 1,
     "quantiles_taqr": quantiles 
     }
 
@@ -35,8 +35,8 @@ for zone in zones:
     
         c_ens, est_q, act, beta, orig  = nabqr.pipeline(
             data[zone,"Ensembles"],
-            data[zone,"Observed"].values.squeeze(),
-            name = zone,
+            data[zone,"Observed"],
+            save_name = zone,
             **pipeline_args
         )
         c_names = ["Corrected Ensemble " + str(x+1) for x in c_ens.columns]

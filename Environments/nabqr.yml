@@ -3,7 +3,7 @@ channels:
  - conda-forge
 dependencies:
  - python>=3.10,<3.13
- - spyder-kernel
+ - spyder-kernels
  - r
  - r-quantreg
  - r-readr
@@ -11,4 +11,4 @@ dependencies:
  - pip:
    - tensorflow
    - tensorflow-probability
-   - nabqr
+   - -e ../../nabqr
