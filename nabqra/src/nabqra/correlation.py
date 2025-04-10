@@ -103,15 +103,3 @@ class correlation_nabqr(correlation_model):
         intervals = np.ones((self.horizon, 3)) * self.dist.ppf([0.5, self.alpha / self.sided, 1 - self.alpha / self.sided])
         
         return intervals
-        
-        
-        
-#%%
-"""
-y = sm.tsa.arma_generate_sample([1, 0.7], [1,0.3], 1000)
-y = pd.DataFrame(y)
-model = correlation_sarma(order = (1,0,1))
-
-model.fit(y.values)
-res = model.transform(y)
-"""

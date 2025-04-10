@@ -1,5 +1,4 @@
 # i want the original data in the repo
 !*.csv
 !*.pkl
-!Raw Data/**/*
-!NABQR Results/**/*
+!Raw Data/**

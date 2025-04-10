@@ -58,6 +58,7 @@ class quantile_model():
         if u > self.quantiles[-1]: return np.nan
         
         return self._quantiles(u, *args, **kwargs)
+    
     def pdf(self, y, *args, **kwargs):
         if not np.isscalar(y) or not np.isfinite(y): return np.nan
         if y < self.q_vals[0] or y > self.q_vals[-1]: return 0
@@ -207,6 +208,7 @@ class piecewise_linear_model(quantile_model):
         else:
             res = np.nan
         return res + base_val
+    
     def _pdf(self,y):
         conds = (y >= self.q_vals[:-1]) & (y < self.q_vals[1:])
         
@@ -244,71 +246,71 @@ class spline_model(quantile_model):
 
 #%% quick tests
 
-import matplotlib.pyplot as plt
-plt.close('all')
 
-N = 8
-quantiles = np.sort(stats.uniform().rvs(N))
-
-dist1 = stats.norm()
-dist2 = stats.expon()
-
-est_q1 = dist1.ppf(quantiles)
-est_q2 = dist2.ppf(quantiles)
-
-maxval, minval = 20, -20
-models_1 = {
-    "constant": constant_model(quantiles, minval, maxval),
-    "notail": piecewise_linear_model(None, quantiles, minval, maxval),
-    "flat": piecewise_linear_model("Flat", quantiles, minval, maxval),
-    "spline": spline_model(quantiles, minval, maxval)
-}
-maxval, minval = 6, 0
-models_2 = {
-    "constant": constant_model(quantiles, minval, maxval),
-    "notail": piecewise_linear_model(None, quantiles, minval, maxval),
-    "flat": piecewise_linear_model("Flat", quantiles, minval, maxval),
-    "spline": spline_model(quantiles, minval, maxval)
-}
-
-X = np.linspace(-19, 19, 1000)
-names = list(models_1.keys())
-
-plt.figure(figsize = (14,8))
-plt.subplot(1,2,1)
-for name in names:
-    tmp = models_1[name].transform(est_q1, X)[1]
-    plt.plot(X, tmp)
-plt.plot(X, dist1.cdf(X), color = 'black')
-
-plt.subplot(1,2,2)
-for name in names:
-    models_1[name].fit(est_q1)
-    tmp = [models_1[name].pdf(y) for y in X]
-    plt.plot(X, tmp)
-plt.plot(X, dist1.pdf(X), color = 'black')
-plt.legend(names)
-plt.tight_layout()
-
-#%%
-
-X = np.linspace(-7,7, 1000)
-names = list(models_2.keys())
-
-plt.figure(figsize = (14,8))
-plt.subplot(1,2,1)
-for name in names:
-    tmp = models_2[name].transform(est_q2, X)[1]
-    plt.plot(X, tmp)
-plt.plot(X, dist2.cdf(X), color = 'black')
-
-plt.subplot(1,2,2)
-for name in names:
-    models_2[name].fit(est_q2)
-    tmp = [models_2[name].pdf(y) for y in X]
-    plt.plot(X, tmp)
-plt.plot(X, dist2.pdf(X), color = 'black')
-plt.legend(names)
-plt.tight_layout()
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    plt.close('all')
+    
+    N = 10
+    quantiles = np.sort(stats.uniform().rvs(N))
+    
+    dist1 = stats.norm()
+    dist2 = stats.expon()
+    
+    est_q1 = dist1.ppf(quantiles)
+    est_q2 = dist2.ppf(quantiles)
+    
+    maxval, minval = 6.1, -6.1
+    models_1 = {
+        "constant": constant_model(quantiles, minval, maxval),
+        "notail": piecewise_linear_model(None, quantiles, minval, maxval),
+        "flat": piecewise_linear_model("Flat", quantiles, minval, maxval),
+        "spline": spline_model(quantiles, minval, maxval)
+    }
+    maxval, minval = 6, 0
+    models_2 = {
+        "constant": constant_model(quantiles, minval, maxval),
+        "notail": piecewise_linear_model(None, quantiles, minval, maxval),
+        "flat": piecewise_linear_model("Flat", quantiles, minval, maxval),
+        "spline": spline_model(quantiles, minval, maxval)
+    }
+    
+    X = np.linspace(-6, 6, 1000)
+    names = list(models_1.keys())
+    
+    plt.figure(figsize = (14,8))
+    plt.subplot(1,2,1)
+    for name in names:
+        tmp = models_1[name].transform(est_q1, X)[1]
+        plt.plot(X, tmp)
+    plt.plot(X, dist1.cdf(X), color = 'black')
+    
+    plt.subplot(1,2,2)
+    for name in names:
+        models_1[name].fit(est_q1)
+        tmp = [models_1[name].pdf(y) for y in X]
+        plt.plot(X, tmp)
+    plt.plot(X, dist1.pdf(X), color = 'black')
+    plt.legend(names)
+    plt.tight_layout()
+    
+    X = np.linspace(-7,7, 1000)
+    names = list(models_2.keys())
+    
+    plt.figure(figsize = (14,8))
+    plt.subplot(1,2,1)
+    for name in names:
+        tmp = models_2[name].transform(est_q2, X)[1]
+        plt.plot(X, tmp)
+    plt.plot(X, dist2.cdf(X), color = 'black')
+    
+    plt.subplot(1,2,2)
+    for name in names:
+        models_2[name].fit(est_q2)
+        tmp = [models_2[name].pdf(y) for y in X]
+        plt.plot(X, tmp)
+    plt.plot(X, dist2.pdf(X), color = 'black')
+    plt.legend(names)
+    plt.tight_layout()
 
 

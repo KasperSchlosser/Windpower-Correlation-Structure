@@ -4,5 +4,5 @@
 *keras
 *pkl
 **/*pyc
-Figures/*
-Tables/*
+results/*
+misc/*

@@ -26,7 +26,6 @@ zones = data.columns.get_level_values(0).unique()
 
 #%% nabqr
 
-
 corrected_ensembles = {}
 estimated_quantiles = {}
 actuals = {}

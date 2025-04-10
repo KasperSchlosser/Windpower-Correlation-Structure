@@ -3,11 +3,14 @@ channels:
  - conda-forge
 dependencies:
  - python
- - spyder
  - numpy
+ - spyder
  - pandas
  - scipy
  - matplotlib
  - statsmodels
  - scienceplots
  - seaborn
+ - properscoring
+ - spyder
+ - pip
