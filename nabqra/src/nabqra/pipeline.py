@@ -30,25 +30,20 @@ class pipeline():
     
         if self.quantile_model is not None:
             
-            print("forwardtransform")
-        
-            tmp = self.quantile_model.transform(estimated_quantiles.values, observations.values)
+            tmp = self.quantile_model.transform(estimated_quantiles.values, res["Original", "Observation"].values)
             res.loc[:, idx["Normal", "Observation"]] =   tmp[0]
             res.loc[:, idx["CDF", "Observation"]] =   tmp[1]
             
-            print("Correlation")
+
             tmp = self.correlation_model.transform(res.loc[:, idx["Normal","Observation"]], **kwargs)
             res.loc[idx[:], idx["Normal", ["Estimate", "Upper Interval", "Lower Interval"] ]] =   tmp[0].values
             sim.loc[idx[:], idx["Normal", : ]] = tmp[1].values
-            
-            print("backtransform estimates")
             
             tmp = self.quantile_model.back_transform(estimated_quantiles.values,
                                                      res.loc[idx[:], idx["Normal", ["Estimate", "Upper Interval", "Lower Interval"]]].values)
             res.loc[idx[:], idx["Original", ["Estimate", "Upper Interval", "Lower Interval"] ]] =  tmp[0]
             res.loc[idx[:], idx["CDF", ["Estimate", "Upper Interval", "Lower Interval"] ]] =  tmp[1]
             
-            print("backtransform sim")
             tmp = self.quantile_model.back_transform(estimated_quantiles.values,
                                                      sim.loc[:, idx["Normal", :]].values)
             sim.loc[idx[:], idx["Original", : ]] =  tmp[0]
@@ -61,5 +56,4 @@ class pipeline():
             sim.loc[idx[:], idx["Original", : ]] =  tmp[1].values
         
         return res, sim
-        
         

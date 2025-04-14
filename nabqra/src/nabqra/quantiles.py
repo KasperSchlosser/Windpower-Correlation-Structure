@@ -2,6 +2,7 @@
 import numpy as np
 import scipy.stats as stats
 import scipy.interpolate as interpolate
+import pandas as pd
 
 
 # quantile models
@@ -20,12 +21,10 @@ class quantile_model():
         quant[0] = 0
         quant[-1] = 1
         
-        self.quantiles = quant
+        self.original_quantiles = quant
         
         self.max_val = max_val
         self.min_val = min_val
-        
-        self.dq = self.quantiles[1:] - self.quantiles[:-1]
         
         self.dist = dist
         
@@ -39,7 +38,17 @@ class quantile_model():
         self.q_vals[-1] = self.max_val
         self.q_vals[0] = self.min_val
         
+        # we sometimes get identical x values.
+        # in this case we keep the one corresponding to the lower quantile
+        # might be inaccurate, but should only happen when the distribution is very close
+        _, idx = np.unique(self.q_vals, return_index = True)
+        
+        self.q_vals = self.q_vals[idx]
+        self.quantiles = self.original_quantiles[idx]
+        self.quantiles[-1] = 1 #ensure we still have the 100% quantile
+        
         self.dx = self.q_vals[1:] - self.q_vals[:-1]
+        self.dq = self.quantiles[1:] - self.quantiles[:-1]
         
         return
     
@@ -57,7 +66,7 @@ class quantile_model():
         if u < self.quantiles[0]: return np.nan
         if u > self.quantiles[-1]: return np.nan
         
-        return self._quantiles(u, *args, **kwargs)
+        return self._quantile(u, *args, **kwargs)
     
     def pdf(self, y, *args, **kwargs):
         if not np.isscalar(y) or not np.isfinite(y): return np.nan
@@ -89,9 +98,10 @@ class quantile_model():
         pseudo_resids = np.zeros(actuals.shape)
         
         for i in range(len(est_quantiles)):
+            
             self.fit(est_quantiles[i,:])
 
-            pseudo_resids[:, i] = np.array([self.cdf(obs) for obs in actuals[:,i]]).squeeze()
+            pseudo_resids[i, :] = np.array([self.cdf(obs) for obs in actuals[i,:]]).squeeze()
         
         resids = stats.norm().ppf(pseudo_resids)
         
@@ -120,6 +130,7 @@ class quantile_model():
             orig[i, :] = np.array([self.quantile(obs) for obs in pseudo_resids[i,:]] ).squeeze()
         
         return orig, pseudo_resids
+
 
 class constant_model(quantile_model):
     def _cdf(self, y):
@@ -239,78 +250,9 @@ class spline_model(quantile_model):
     def _cdf(self, y):
         return self.model(y)
     def _quantile(self, u):
-        return self.model.solve(u)
+        return self.model.solve(u)[0]
     def _pdf(self, y):
         return self.deriv(y)
         
-
-#%% quick tests
-
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    plt.close('all')
-    
-    N = 10
-    quantiles = np.sort(stats.uniform().rvs(N))
-    
-    dist1 = stats.norm()
-    dist2 = stats.expon()
-    
-    est_q1 = dist1.ppf(quantiles)
-    est_q2 = dist2.ppf(quantiles)
-    
-    maxval, minval = 6.1, -6.1
-    models_1 = {
-        "constant": constant_model(quantiles, minval, maxval),
-        "notail": piecewise_linear_model(None, quantiles, minval, maxval),
-        "flat": piecewise_linear_model("Flat", quantiles, minval, maxval),
-        "spline": spline_model(quantiles, minval, maxval)
-    }
-    maxval, minval = 6, 0
-    models_2 = {
-        "constant": constant_model(quantiles, minval, maxval),
-        "notail": piecewise_linear_model(None, quantiles, minval, maxval),
-        "flat": piecewise_linear_model("Flat", quantiles, minval, maxval),
-        "spline": spline_model(quantiles, minval, maxval)
-    }
-    
-    X = np.linspace(-6, 6, 1000)
-    names = list(models_1.keys())
-    
-    plt.figure(figsize = (14,8))
-    plt.subplot(1,2,1)
-    for name in names:
-        tmp = models_1[name].transform(est_q1, X)[1]
-        plt.plot(X, tmp)
-    plt.plot(X, dist1.cdf(X), color = 'black')
-    
-    plt.subplot(1,2,2)
-    for name in names:
-        models_1[name].fit(est_q1)
-        tmp = [models_1[name].pdf(y) for y in X]
-        plt.plot(X, tmp)
-    plt.plot(X, dist1.pdf(X), color = 'black')
-    plt.legend(names)
-    plt.tight_layout()
-    
-    X = np.linspace(-7,7, 1000)
-    names = list(models_2.keys())
-    
-    plt.figure(figsize = (14,8))
-    plt.subplot(1,2,1)
-    for name in names:
-        tmp = models_2[name].transform(est_q2, X)[1]
-        plt.plot(X, tmp)
-    plt.plot(X, dist2.cdf(X), color = 'black')
-    
-    plt.subplot(1,2,2)
-    for name in names:
-        models_2[name].fit(est_q2)
-        tmp = [models_2[name].pdf(y) for y in X]
-        plt.plot(X, tmp)
-    plt.plot(X, dist2.pdf(X), color = 'black')
-    plt.legend(names)
-    plt.tight_layout()
 
 

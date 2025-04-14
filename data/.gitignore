@@ -1,4 +1,2 @@
 # i want the original data in the repo
-!*.csv
-!*.pkl
 !Raw Data/**

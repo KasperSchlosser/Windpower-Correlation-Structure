@@ -3,7 +3,9 @@ import pandas as pd
 import statsmodels.api as sm
 import scipy.stats as stats
 
-class correlation_model():
+from tqdm import tqdm
+
+class model():
     
     def __init__(self, n_sim = 10, horizon = 24, alpha = 0.02, sided = 2, burnin = 240):
         
@@ -20,16 +22,17 @@ class correlation_model():
     
     def predict(self):
         return
+    
     def simulate(self):
         return
+    
     def transform(self, data):
-        #assume univariate
         
         N = len(data)
         forecast = pd.DataFrame(columns = ["Estimate", "Lower interval", "Upper interval"], index = data.index, dtype = np.float64)
         simulation = pd.DataFrame(columns = ['Simulation' + str(x+1) for x in range(self.n_sim)], index = data.index, dtype = np.float64)
         
-        for start in range(self.burnin, N, self.horizon):
+        for start in tqdm(range(self.burnin, N, self.horizon)):
             
             #size of winow
             #horizon for most cases but smalle at end
@@ -46,7 +49,7 @@ class correlation_model():
             
         return forecast, simulation
         
-class correlation_sarma(correlation_model):
+class sarma(model):
     
     def __init__(self, order = (1,0,0), seasonal_order = (0,0,0,0), trend = None, **kwargs):
         
@@ -79,7 +82,7 @@ class correlation_sarma(correlation_model):
         
         return np.concatenate((mu[:,np.newaxis], interval), axis = 1)
     
-class correlation_nabqr(correlation_model):
+class dummy(model):
     
     def __init__(self, dist = None, **kwargs):
         

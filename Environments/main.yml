@@ -13,4 +13,7 @@ dependencies:
  - seaborn
  - properscoring
  - spyder
+ - tqdm
  - pip
+ - pip:
+   - -e ../nabqra

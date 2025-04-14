@@ -4,5 +4,6 @@
 *keras
 *pkl
 **/*pyc
-results/*
+Results/**
+Data/*
 misc/*
