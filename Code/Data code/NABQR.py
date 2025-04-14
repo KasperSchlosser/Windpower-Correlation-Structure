@@ -8,7 +8,7 @@ import nabqr
 from pathlib import Path
 
 pipeline_args = {
-    "training_size": 0.64,
+    "training_size": 0.64, #gives about a year of testing data
     "epochs": 30,
     "quantiles_taqr": np.concat([[0.01], np.arange(0.05,1,0.05), [0.99]]),
     "quantiles_lstm": np.concat([[0.01], np.arange(0.05,1,0.05), [0.99]]),
@@ -18,7 +18,7 @@ pipeline_args["names_lstm"] = [f'{x:.2f}' for x in pipeline_args["quantiles_lstm
 
 PATH = Path.cwd()
 load_path = PATH.parents[1] / "Data" 
-#save_path = PATH.parents[1] / "Data" / "NABQR"
+save_path = PATH.parents[1] / "Data" / "NABQR"
 
 data = pd.read_pickle(load_path / "Data" / "Cleaned Data.pkl")
 

@@ -7,9 +7,6 @@ import nabqra
 #from pandas import IndexSlice as idx
 from collections import defaultdict
 
-
-
-
 #%% load data
 
 PATH = pathlib.Path.cwd().parents[1]
@@ -28,49 +25,18 @@ quantiles_str = np.array(taqr_quantiles.columns.get_level_values(1).unique())
 quantiles = quantiles_str.astype(np.float64)
 
 zone_limits ={
-    "DK1-offshore": (0, 1250),
-    "DK1-onshore": (0,3575),
-    "DK2-offshore": (0,1000),
-    "DK2-onshore": (0, 640)
+    "DK1-offshore": (0, 1300),
+    "DK1-onshore": (0,3600),
+    "DK2-offshore": (0,1100),
+    "DK2-onshore": (0, 650)
     }
 
 # there are some quantile crossings
 # fix by sorting
 # problem seems worse for taqr than for lstm
 for zone in zones:
-    taqr_quantiles[zone] = np.sort(taqr_quantiles[zone].values)
-    lstm_quantiles[zone] = np.sort(lstm_quantiles[zone].values)
-    
-# we occationally get negative estimates
-# this messes with the quantile estimates
-for zone in zones:
-    
-    #find where distribution is outside limits
-    taqr_quantiles[zone] = taqr_quantiles[zone].where(
-        (taqr_quantiles[zone] > zone_limits[zone][0])
-        & (taqr_quantiles[zone] < zone_limits[zone][1]),
-        other = np.nan
-    )
-    lstm_quantiles[zone] = lstm_quantiles[zone].where(
-        (lstm_quantiles[zone] > zone_limits[zone][0])
-        & (lstm_quantiles[zone] < zone_limits[zone][1]),
-        other = np.nan
-    )
-    
-    #perform linear interpolation between last proper quantile and limits
-    tmp = pd.concat(
-        (pd.Series(zone_limits[zone][0], index = date_index),
-         taqr_quantiles[zone],
-         pd.Series(zone_limits[zone][1], index = date_index)),
-        axis = 1)
-    taqr_quantiles[zone] = tmp.interpolate(axis = 1).drop(tmp.columns[[0,-1]], axis = 1)
-    
-    tmp = pd.concat(
-        (pd.Series(zone_limits[zone][0], index = date_index),
-         lstm_quantiles[zone],
-         pd.Series(zone_limits[zone][1], index = date_index)),
-        axis = 1)
-    lstm_quantiles[zone] = tmp.interpolate(axis = 1).drop(tmp.columns[[0,-1]], axis = 1)
+    taqr_quantiles[zone] = nabqra.misc.fix_quantiles(taqr_quantiles[zone], *zone_limits[zone])
+    lstm_quantiles[zone] = nabqra.misc.fix_quantiles(lstm_quantiles[zone], *zone_limits[zone])
 
 # ensure everything has the same datapoints
 taqr_quantiles = taqr_quantiles.loc[date_index,:]
@@ -78,9 +44,14 @@ lstm_basis = lstm_basis.loc[date_index,:]
 lstm_quantiles = lstm_quantiles.loc[date_index,:]
 actuals = actuals.loc[date_index]
 
+# sometimes we get negative obs
+# gives infinities in normal space,
+#gives the models problems
+actuals[actuals < 0.01] = 0.01
+
 #%% models
 
-global_params = {"n_sim": 10}
+global_params = {"n_sim": 200}
 
 models = {
     "Pure Ar": {
