@@ -21,9 +21,8 @@ dependencies:
  - r-readr
  - pip
  - pip:
-   - -e ./nabqra
-   - -e ./nabqr
+   - -e ../nabqra
+   - -e ../nabqr
 variables:
-  MATPLOTLIBRC: "C:\Users\kpfs\Projects\Windpower-Correlation-Structure"
-
+  MATPLOTLIBRC: C:\Users\kpfs\Projects\Windpower-Correlation-Structure\Settings
 #after creation/update the r package "onlineforecast" need to be install through r
