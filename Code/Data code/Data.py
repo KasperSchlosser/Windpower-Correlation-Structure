@@ -5,23 +5,23 @@ import pandas as pd
 from pathlib import Path
 
 def cleantz(ensemble):
-    #drops timezones from the ensemble data
-    #then drops the duplicated timeslot
-    #not best solution
+    # drops timezones from the ensemble data
+    # then drops the duplicated timeslot
+    # might not be the best solution
     
     ensemble.index = ensemble.index.to_series().apply(lambda x: x.tz_localize(None)).values
     ensemble = ensemble[~ensemble.index.duplicated()]
+    ensemble.dropna()
     
     return ensemble
 
 PATH = Path.cwd()
 load_path = PATH.parents[1] / "Data" / "Raw Data" 
-save_path = PATH.parents[1] / "Data" 
+save_path = PATH.parents[1] / "Data" / "Data"
 
-# the observed production sometimes goes negivate, only in offshore
-# 0 values will also give problems later
-# for now set make a min value
-# should discuss this
+# The observed production sometimes goes negative, this is an error
+# values of 0 would also give problems
+# this value is for practical purpose 0
 low_value = 0.01
 
 
@@ -33,37 +33,45 @@ observations = list((load_path / "Observations").glob("*pkl"))
 
 raw_ensembles = {}
 raw_observations = {}
-dfs_cleaned = {}
+cleaned_ensembles =  {}
+cleaned_observations = {}
 for ens, obs in zip(ensembles, observations):
     
-    print(ens,obs)
-    
     zone = "-".join(ens.stem.split("_")[:2])
+    print(zone)
     
     ens = pd.read_pickle(ens)
     obs = pd.read_pickle(obs)
     obs.name = "Observed"
     
-    raw_ensembles[zone] = ens
-    raw_observations[zone] = obs
+    # need original data for plots
+    raw_ensembles[zone] = ens.copy(deep = True)
+    raw_observations[zone] = obs.copy(deep = True)
     
     #remove tz from ensemble and drop the missing hours from observation
     ens = cleantz(ens)
+    
+    # remove nan and change problematic observations
     obs = obs.dropna()
     obs[obs < low_value] = low_value
-    
-    dfs_cleaned[zone] = pd.concat((ens,obs), axis = 1, keys = ["Ensembles", "Observed"])
-    
-#join into big table
-data_cleaned = pd.concat(dfs_cleaned, axis = 1, keys = dfs_cleaned.keys())
+
+    cleaned_ensembles[zone] = ens
+    cleaned_observations[zone] = obs
+
+# Save data
+cleaned_ensembles = pd.concat(cleaned_ensembles, axis = 1, keys = cleaned_ensembles.keys())
+cleaned_observations = pd.concat(cleaned_observations, axis = 1, keys = cleaned_observations.keys())
 raw_ensembles = pd.concat(raw_ensembles, axis = 1, keys = raw_ensembles.keys())
 raw_observations = pd.concat(raw_observations, axis = 1, keys = raw_observations.keys())
 
-data_cleaned.to_pickle(save_path / "Data" / "Cleaned Data.pkl")
-data_cleaned.to_csv(save_path / "Data" / "Cleaned Data.csv")
+cleaned_ensembles.to_pickle(save_path / "cleaned_ensembles.pkl")
+cleaned_ensembles.to_csv(save_path / "cleaned_ensembles.csv")
 
-raw_ensembles.to_pickle(save_path / "Data" / "raw_ensembles.pkl")
-raw_ensembles.to_csv(save_path / "Data" / "raw_ensembles.csv")
+cleaned_observations.to_pickle(save_path / "cleaned_observations.pkl")
+cleaned_observations.to_csv(save_path / "cleaned_observations.csv")
 
-raw_observations.to_pickle(save_path / "Data" / "raw_observations.pkl")
-raw_observations.to_csv(save_path / "Data" / "raw_observations.csv")
+raw_ensembles.to_pickle(save_path / "raw_ensembles.pkl")
+raw_ensembles.to_csv(save_path / "raw_ensembles.csv")
+
+raw_observations.to_pickle(save_path / "raw_observations.pkl")
+raw_observations.to_csv(save_path / "raw_observations.csv")

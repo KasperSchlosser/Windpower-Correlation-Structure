@@ -1,13 +1,10 @@
 import pathlib
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
-import statsmodels.api as sm
+
 
 import nabqra
 
-from pandas import IndexSlice as idx
 
 #%% load data
 PATH = pathlib.Path.cwd().parents[1]
@@ -31,10 +28,10 @@ quantiles = quantiles_str.astype(np.float64)
 
 # %% fix the estimated quantiles
 zone_limits ={
-    "DK1-offshore": (0, 1250),
-    "DK1-onshore": (0,3575),
-    "DK2-offshore": (0,1000),
-    "DK2-onshore": (0, 640)
+    "DK1-offshore": (0, 1300),
+    "DK1-onshore": (0,3600),
+    "DK2-offshore": (0,1100),
+    "DK2-onshore": (0, 650)
     }
 
 for zone in zones:

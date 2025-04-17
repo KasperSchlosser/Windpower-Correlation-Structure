@@ -38,20 +38,22 @@ for zone in zones:
     taqr_quantiles[zone] = nabqra.misc.fix_quantiles(taqr_quantiles[zone], *zone_limits[zone])
     lstm_quantiles[zone] = nabqra.misc.fix_quantiles(lstm_quantiles[zone], *zone_limits[zone])
 
+# sometimes we get negative obs
+# gives infinities in normal space,
+# gives the models problems
+actuals[actuals < 0.01] = 0.01
+
 # ensure everything has the same datapoints
 taqr_quantiles = taqr_quantiles.loc[date_index,:]
 lstm_basis = lstm_basis.loc[date_index,:]
 lstm_quantiles = lstm_quantiles.loc[date_index,:]
 actuals = actuals.loc[date_index]
 
-# sometimes we get negative obs
-# gives infinities in normal space,
-#gives the models problems
-actuals[actuals < 0.01] = 0.01
+
 
 #%% models
 
-global_params = {"n_sim": 200}
+global_params = {"n_sim": 200, "burnin": 240, "horizon": 24, "alpha": 0.02, "sided": 2}
 
 models = {
     "Pure Ar": {
@@ -131,3 +133,32 @@ for zone, lim in zone_limits.items():
         forecast_res[zone][model] = res[0]
         simulation_res[zone][model] = res[1]
 
+
+#%% combine data
+
+forecast_dfs = []
+for zone, data in forecast_res.items():
+    df = pd.concat([df for df in data.values()], keys = data.keys(), axis = 1)
+    forecast_dfs.append((zone, df))
+    
+forecast = pd.concat([x[1] for x in forecast_dfs], keys = [x[0] for x in forecast_dfs], axis = 1)
+
+simulation_dfs = []
+for zone, data in simulation_res.items():
+    df = pd.concat([df for df in data.values()], keys = data.keys(), axis = 1)
+    simulation_dfs.append((zone, df))
+    
+simulation = pd.concat([x[1] for x in simulation_dfs], keys = [x[0] for x in simulation_dfs], axis = 1)
+
+#remove burin period
+
+forecast = forecast.iloc(axis = 0)[global_params["burnin"]:]
+simulation = simulation.iloc(axis = 0)[global_params["burnin"]:]
+
+#%% save data
+
+forecast.to_pickle(save_path / "forecast results.pkl")
+forecast.to_csv(save_path / "forecast results.csv")
+
+simulation.to_pickle(save_path / "simulation results.pkl")
+#simulation.to_csv(save_path / "simulation results.csv") #maybe not save this as cvs, currently 1.6 gb, woops

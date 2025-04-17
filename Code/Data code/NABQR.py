@@ -26,28 +26,39 @@ zones = data.columns.get_level_values(0).unique()
 
 #%% nabqr
 
-corrected_ensembles = {}
-taqr_quantiles = {}
-actuals = {}
-beta_parameters = {}
-lstm_quantiles = {}
+corrected_ensembles = []
+taqr_quantiles = []
+actuals = []
+beta_parameters = []
+lstm_quantiles = []
+actuals_train = []
+corrected_ensembles_train = []
+lstm_quantiles_train = []
 for zone in zones:
         
         # i dont use train data for now
         # really hard to get nabqr to spit that out
-        _, test  = nabqr.pipeline(
+        train, test  = nabqr.pipeline(
             data[zone,"Ensembles"],
             data[zone,"Observed"],
             #save_name = zone,
             **pipeline_args
         )
 
-        corrected_ensembles[zone] = test["Corrected ensembles"]
-        lstm_quantiles[zone] = test["Corrected ensembles original space"]
-        taqr_quantiles[zone] = test["TAQR results"]
-        actuals[zone] = test["Actuals"]
-        beta_parameters[zone] = test["Beta"]
+        actuals_train.append(train["Actuals"])
+        corrected_ensembles_train.append(train["Corrected ensembles"])
+        lstm_quantiles_train.append(train["Corrected ensembles original space"])
 
+        corrected_ensembles.append(test["Corrected ensembles"])
+        lstm_quantiles.append(test["Corrected ensembles original space"])
+        taqr_quantiles.append(test["TAQR results"])
+        actuals.append(test["Actuals"])
+        beta_parameters.append(test["Beta"])
+
+
+actuals_train = pd.concat(actuals_train.values(), axis = 1, keys = zones)
+corrected_ensembles_train = pd.concat(corrected_ensembles_train.values(), axis = 1, keys = zones)
+lstm_quantiles_train = pd.concat(lstm_quantiles_train.values(), axis = 1, keys = zones)
 
 corrected_ensembles = pd.concat(corrected_ensembles.values(), axis = 1, keys = zones)
 taqr_quantiles = pd.concat(taqr_quantiles.values(), axis = 1, keys = zones)
@@ -56,19 +67,31 @@ beta_parameters = pd.concat(beta_parameters.values(), axis = 1, keys = zones)
 lstm_quantiles = pd.concat(lstm_quantiles.values(), axis = 1, keys = zones)
 
 
+
+
 #%%
-corrected_ensembles.to_csv(save_path / "corrected_ensembles.csv")
-corrected_ensembles.to_pickle(save_path / "corrected_ensembles.pkl")
+corrected_ensembles.to_csv(save_path / "test" / "corrected_ensembles.csv")
+corrected_ensembles.to_pickle(save_path / "test" / "corrected_ensembles.pkl")
 
-taqr_quantiles.to_csv(save_path / "taqr_quantiles.csv")
-taqr_quantiles.to_pickle(save_path / "taqr_quantiles.pkl")
+taqr_quantiles.to_csv(save_path / "test" / "taqr_quantiles.csv")
+taqr_quantiles.to_pickle(save_path / "test" / "taqr_quantiles.pkl")
 
-actuals.to_csv(save_path / "actuals.csv")
-actuals.to_pickle(save_path / "actuals.pkl")
+actuals.to_csv(save_path / "test" / "actuals.csv")
+actuals.to_pickle(save_path / "test" /  "actuals.pkl")
 
-beta_parameters.to_csv(save_path / "beta_parameters.csv")
-beta_parameters.to_pickle(save_path / "beta_parameters.pkl")
+beta_parameters.to_csv(save_path / "test" / "beta_parameters.csv")
+beta_parameters.to_pickle(save_path / "test" / "beta_parameters.pkl")
 
-lstm_quantiles.to_csv(save_path / "lstm_quantiles.csv")
-lstm_quantiles.to_pickle(save_path / "lstm_quantiles.pkl")
+lstm_quantiles.to_csv(save_path / "test" / "lstm_quantiles.csv")
+lstm_quantiles.to_pickle(save_path / "test" / "lstm_quantiles.pkl")
+
+actuals_train.to_csv(save_path / "train" / "actuals.csv")
+actuals_train.to_pickle(save_path / "train" /  
+                        "actuals.pkl")
+
+lstm_quantiles_train.to_csv(save_path / "train" / "lstm_quantiles.csv")
+lstm_quantiles_train.to_pickle(save_path / "train" / "lstm_quantiles.pkl")
+
+corrected_ensembles_train.to_csv(save_path / "train" /  "corrected_ensembles.csv")
+corrected_ensembles_train.to_pickle(save_path / "train" / "corrected_ensembles.pkl")
 

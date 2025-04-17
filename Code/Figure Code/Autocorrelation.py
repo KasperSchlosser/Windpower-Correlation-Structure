@@ -14,7 +14,6 @@ from pandas import IndexSlice as idx
 
 
 #%% load data
-#lets crash
 
 PATH = pathlib.Path()
 load_path = PATH / "Data" / "Autocorrelation"

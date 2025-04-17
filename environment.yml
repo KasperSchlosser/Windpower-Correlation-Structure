@@ -1,0 +1,29 @@
+name: Thesis
+channels:
+ - conda-forge
+dependencies:
+ - python
+ - numpy
+ - spyder
+ - pandas
+ - scipy
+ - matplotlib
+ - statsmodels
+ - scienceplots
+ - seaborn
+ - properscoring
+ - spyder
+ - tqdm
+ - pytorch
+ - keras
+ - r
+ - r-quantreg
+ - r-readr
+ - pip
+ - pip:
+   - -e ./nabqra
+   - -e ./nabqr
+variables:
+  MATPLOTLIBRC: "C:\Users\kpfs\Projects\Windpower-Correlation-Structure"
+
+#after creation/update the r package "onlineforecast" need to be install through r
