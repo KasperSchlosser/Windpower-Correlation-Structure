@@ -19,6 +19,7 @@ dependencies:
  - r
  - r-quantreg
  - r-readr
+ - miktex
  - pip
  - pip:
    - -e ../nabqra
