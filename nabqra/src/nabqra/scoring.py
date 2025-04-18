@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.integrate as integrate
 import properscoring as ps
 
 def variogram_weight(simulations,
@@ -80,3 +81,27 @@ def calc_scores(actuals, predicted, simulations, VARS_kwargs = None):
     CRPS = continous_ranked_probability_score(simulations, actuals)
     
     return MAE, MSE, VARS, CRPS
+
+
+def continous_wasserstein(F_inv, G_inv, lims = (0,1), order = 1, **kwargs):
+    # quick implementation of the wasserstein metric
+    # F_inf, G_inv: quantile (inverse cdf) functions for the distributions F, G
+    # lim: limits of integration, change if distribution has infinite support
+    
+    def _dist(x):
+        return np.abs(F_inv(x) - G_inv(x))**order
+    
+    res = integrate.quad(_dist, *lims, **kwargs)
+    
+    return (res[0]**(1/order), *res[1:])
+
+def continous_kl_divergence(p,q, lims = (-np.inf, np.inf), **kwargs):
+    
+    def _div(x):
+        px = p(x)
+        qx = q(x)
+        return px*np.log(px/qx)
+    
+    return integrate.quad(_div, *lims, **kwargs)
+        
+    

@@ -17,12 +17,11 @@ raw_ens = pd.read_pickle(load_path / "raw_ensembles.pkl")
 clean_obs = pd.read_pickle(load_path / "cleaned_observations.pkl")
 clean_ens = pd.read_pickle(load_path / "cleaned_ensembles.pkl")
 
-zones = raw_obs.columns.unique(level = 0)
 index = raw_obs.index
 small_plot = [np.datetime64("2022-09-01"), np.datetime64("2022-09-14")]
 
-with open(PATH / "Settings" / "zone limits.toml", "rb") as f:
-    zone_lims = tomllib.load(f)
+with open(PATH / "Settings" / "parameters.toml", "rb") as f:
+    parameters = tomllib.load(f)
 
 
 #%% illustrate ensembles
@@ -32,7 +31,7 @@ with open(PATH / "Settings" / "zone limits.toml", "rb") as f:
 fig, axes = plt.subplots(2,2, sharex = True, sharey = False, squeeze = True)
 axes = axes.ravel()
 
-for zone, color, ax in zip(zones, plt.rcParams['axes.prop_cycle'].by_key()["color"], axes):
+for zone, color, ax in zip(parameters["Zones"], plt.rcParams['axes.prop_cycle'].by_key()["color"], axes):
     # mute the ensembles to avoid spaghetti
     ax.plot(raw_ens.index, raw_ens[zone].iloc(axis = 1)[1:],
              color = "grey", alpha = 0.3)
@@ -76,7 +75,7 @@ ax.set_yticks([])
 ax.tick_params("x", rotation = 15)
 
 lines = []
-for zone, color, offset in zip(zones, plt.rcParams['axes.prop_cycle'].by_key()["color"], [0, -0.05,-0.1,-0.15] ):
+for zone, color, offset in zip(parameters["Zones"], plt.rcParams['axes.prop_cycle'].by_key()["color"], [0, -0.05,-0.1,-0.15] ):
 
     twin = ax.twinx()
     p = twin.plot(raw_obs.index, raw_obs[zone], color = color, label = zone)
@@ -89,7 +88,7 @@ for zone, color, offset in zip(zones, plt.rcParams['axes.prop_cycle'].by_key()["
     twin.yaxis.set_ticks_position('left')
     twin.tick_params(axis = "y", which = "both", colors = color)
     
-    twin.set_ylim(*zone_lims[zone])
+    twin.set_ylim(*parameters["Zone-Limits"][zone])
     
     twin.set_ylabel(zone, labelpad = -1, color = color)
 
@@ -104,7 +103,7 @@ fig.savefig(save_path / "Figures" / "Relative obs small")
 fig, axes = plt.subplots(2,2, sharex = True, sharey = False, squeeze = True)
 axes = axes.ravel()
 
-for zone, color, ax in zip(zones, plt.rcParams['axes.prop_cycle'].by_key()["color"], axes):
+for zone, color, ax in zip(parameters["Zones"], plt.rcParams['axes.prop_cycle'].by_key()["color"], axes):
     
     ax.plot(clean_ens.index, clean_ens[zone].median(axis = 1), color= color)
     ax.fill_between(clean_ens.index, clean_ens[zone].min(axis = 1), clean_ens[zone].max(axis = 1),

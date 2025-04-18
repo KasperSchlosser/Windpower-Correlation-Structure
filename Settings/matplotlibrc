@@ -49,9 +49,8 @@ savefig.format: pdf # save as pdf for scalable figures
 # Use serif fonts
 # font.serif : Times
 font.family : serif
-#mathtext.fontset : dejavuserif
+mathtext.fontset : dejavuserif
 
 # Use LaTeX for math formatting
-#text.usetex : True
-#text.latex.preamble : \usepackage{amsmath} \usepackage{amssymb}
-#not for now
+text.usetex : True
+text.latex.preamble : \usepackage{amsmath} \usepackage{amssymb}

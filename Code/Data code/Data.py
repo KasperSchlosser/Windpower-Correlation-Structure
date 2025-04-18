@@ -1,9 +1,8 @@
-# This script runs NABQR on the data thens saves.
-# should be run sparingly as fitting the lstm take quite a while
+# loads raw data, cleans and normalize it
 
 import pandas as pd
-import tomllib
 from pathlib import Path
+import tomllib
 
 def cleantz(ensemble):
     # drops timezones from the ensemble data
@@ -20,13 +19,8 @@ PATH = Path.cwd().parents[1]
 load_path = PATH / "Data" / "Raw Data" 
 save_path = PATH / "Data" / "Data"
 
-# The observed production sometimes goes negative, this is an error
-# values of 0 would also give problems
-# this value is for practical purpose 0
-low_value = 0.01
-
-with open(PATH / "Settings" / "zone limits.toml", "rb") as f:
-    zone_lims = tomllib.load(f)
+with open(PATH / "Settings" / "parameters.toml", "rb") as f:
+    parameters = tomllib.load(f)
 
 #%% Load Data
 # Finds ensembles and observations
@@ -58,13 +52,15 @@ for ens, obs in zip(ensembles, observations):
     ens = cleantz(ens)
     
     # change problematic observations
-    obs[obs < low_value] = low_value
+    obs[obs < parameters["low_value"]] = parameters["low_value"]
 
     cleaned_ensembles[zone] = ens
     cleaned_observations[zone] = obs
     
+    min_val = parameters["Zone-Limits"][zone][1]
+    max_val = parameters["Zone-Limits"][zone][1]
     normalised_ensembles[zone] = (ens - ens.min()) / (ens.max() - ens.min())
-    normalised_observations[zone] = (obs - zone_lims[zone][0]) / (zone_lims[zone][1] - zone_lims[zone][0])
+    normalised_observations[zone] = (obs - min_val) / (max_val - min_val)
 
 cleaned_ensembles = pd.concat(cleaned_ensembles, axis = 1, keys = cleaned_ensembles.keys())
 cleaned_observations = pd.concat(cleaned_observations, axis = 1, keys = cleaned_observations.keys())

@@ -50,29 +50,53 @@ class quantile_model():
         self.dx = self.q_vals[1:] - self.q_vals[:-1]
         self.dq = self.quantiles[1:] - self.quantiles[:-1]
         
-        return
-    
+        return self
+
     def cdf(self, y, *args, **kwargs):
-        if not np.isscalar(y) or not np.isfinite(y): return np.nan
+        _y = np.atleast_1d(y)
+        res = np.empty_like(_y)
         
-        if y < self.q_vals[0]: return 0
-        if y > self.q_vals[-1]: return 1
+        for i, x in enumerate(_y.flat):
+            if not np.isscalar(x) or not np.isfinite(x): 
+                res[i] = np.nan
+            elif x < self.q_vals[0]:
+                res[i] = 0
+            elif x > self.q_vals[-1]:
+                res[i] = 1
+            else:
+                res[i] = self._cdf(x, *args, **kwargs)
         
-        return self._cdf(y, *args, **kwargs)
+        return res
     
     def quantile(self, u, *args, **kwargs):
-        if not np.isscalar(u) or not np.isfinite(u): return np.nan
+        _u = np.atleast_1d(u)
+        res = np.empty_like(_u)
         
-        if u < self.quantiles[0]: return np.nan
-        if u > self.quantiles[-1]: return np.nan
+        for i, x in enumerate(_u.flat):
+            if not np.isscalar(x) or not np.isfinite(x): 
+                res[i] = np.nan
+            elif x < self.quantiles[0]:
+                res[i] = np.nan
+            elif x > self.quantiles[-1]:
+                res[i] = np.nan
+            else:
+                res[i] = self._quantile(x, *args, **kwargs)
         
-        return self._quantile(u, *args, **kwargs)
+        return res
     
     def pdf(self, y, *args, **kwargs):
-        if not np.isscalar(y) or not np.isfinite(y): return np.nan
-        if y < self.q_vals[0] or y > self.q_vals[-1]: return 0
+        _y = np.atleast_1d(y)
+        res = np.empty_like(_y)
         
-        return self._pdf(y, *args, **kwargs)
+        for i, x in enumerate(_y.flat):
+            if not np.isscalar(x) or not np.isfinite(x): 
+                res[i] = np.nan
+            elif x < self.q_vals[0] or x > self.q_vals[-1]:
+                res[i] = 0
+            else:
+                res[i] = self._pdf(x, *args, **kwargs)
+        
+        return res
     
     def _cdf(self, y, *args, **kwargs):
         return
@@ -134,7 +158,7 @@ class quantile_model():
 
 class constant_model(quantile_model):
     def _cdf(self, y):
-        mask = (y >= self.q_vals[:-1]) & (y < self.q_vals[1:])
+        mask = (y >= self.q_vals[:-1]) & (y <= self.q_vals[1:])
         
         res = self.quantiles[:-1][mask] 
         return res[0]
@@ -146,42 +170,39 @@ class constant_model(quantile_model):
         
         return res[0]
     
-    # not applicable for this
-    # basically a discrete distribution
-    def _pdf(self, y):
-        return np.nan 
+    # pdf is not applicable for this models
+    def pdf(self, y):
+        return np.full_like(y, np.nan)
         
 
-class piecewise_linear_model(quantile_model):
+class linear_model(quantile_model):
     
-    def __init__(self, tail_correction = None, *args, **kwargs):
+    def __init__(self, *args, tail_correction = False, **kwargs):
         
         super().__init__(*args, **kwargs)
-        
-        assert tail_correction in (None, "Flat")
         self.tail_correction = tail_correction
         
         return
     
     def _get_poly_coef(self, ix, dq, dx):
         
-        match (ix, self.tail_correction):
-            case (0, "Flat"):
+        match ix, self.tail_correction:
+            case 0, True:
                 a = dq / dx**2
                 b = 0
-
-            case (-1, "Flat"):
+                
+            case -1, True:
                 a = - dq / dx**2
                 b = 2 * dq / dx
-
+                
             case _: 
                 a = 0
                 b = dq / dx
-
+                
         return a,b
 
     def _cdf(self, y):
-        conds = (y >= self.q_vals[:-1]) & (y < self.q_vals[1:])
+        conds = (y >= self.q_vals[:-1]) & (y <= self.q_vals[1:])
         
         ix = np.argmax(conds)
         if ix == len(conds)-1: ix = -1
@@ -198,7 +219,7 @@ class piecewise_linear_model(quantile_model):
     
     def _quantile(self, u):
 
-        conds = (u >= self.quantiles[:-1]) & (u < self.quantiles[1:])
+        conds = (u >= self.quantiles[:-1]) & (u <= self.quantiles[1:])
         
         ix = np.argmax(conds)
         
@@ -221,7 +242,7 @@ class piecewise_linear_model(quantile_model):
         return res + base_val
     
     def _pdf(self,y):
-        conds = (y >= self.q_vals[:-1]) & (y < self.q_vals[1:])
+        conds = (y >= self.q_vals[:-1]) & (y <= self.q_vals[1:])
         
         ix = np.argmax(conds)
         if ix == len(conds)-1: ix = -1
@@ -245,7 +266,7 @@ class spline_model(quantile_model):
         self.model = interpolate.PchipInterpolator(self.q_vals, self.quantiles, extrapolate = False)
         self.deriv = self.model.derivative(1)
         
-        return
+        return self
     
     def _cdf(self, y):
         return self.model(y)
