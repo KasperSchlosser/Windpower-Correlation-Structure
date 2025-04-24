@@ -4,6 +4,7 @@ import tomllib
 import pandas as pd
 import numpy as np
 import scipy.stats as stats
+import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import properscoring as ps
 
@@ -17,6 +18,7 @@ with open(PATH / "Settings" / "parameters.toml", "rb") as f:
     parameters = tomllib.load(f)
     
     
+colors =  plt.rcParams['axes.prop_cycle'].by_key()["color"]
 # small function for calculating wasserstein dist
 # only for plotting, dont use elsewhere
 def wasser(x, y, p):
@@ -156,7 +158,8 @@ for x2, color, offset in zip([1, 5, 10, 50], plt.rcParams['axes.prop_cycle'].by_
     twin.tick_params(axis = "y", which = "both", colors = color)
     
     twin.set_ylabel("", labelpad = 0, color = color)
-    twin.set_ylim([0,(X[-1] + x2) / 2])
+    twin.set_ylim([0, (X[-1] + x2) / 2])
+    
 ax.legend(lines, [x.get_label() for x in lines], loc = "lower right")
 ax.set_title("MAE")
 ax.set_xlabel("$x1$")
@@ -182,7 +185,7 @@ for x2, color, offset in zip([1, 5, 10, 50], plt.rcParams['axes.prop_cycle'].by_
     twin.tick_params(axis = "y", which = "both", colors = color)
     
     twin.set_ylabel("", labelpad = 0, color = color)
-    twin.set_ylim([0,np.sqrt((X[-1]**2 + x2**2) / 2)])
+    twin.set_ylim([np.sqrt((X[-1]**2 + x2**2) / 2)  - np.sqrt((X[-1]**2 + 1) / 2), np.sqrt((X[-1]**2 + x2**2)/2)])
 ax.legend(lines, [x.get_label() for x in lines], loc = "lower right")
 ax.set_title("RMSE")
 ax.set_xlabel("$x1$")
@@ -197,10 +200,12 @@ X = np.linspace(-3,3, 1000)
 fig, ax = plt.subplots()
 
 ax.plot(X, dist.cdf(X), color = "black", label = "True distribution")
+ax.vlines(example_point, 0, 1, color = "black", linestyle = "--", label = "Observed x")
 ax.plot(X, np.heaviside(X - example_point, 1), label = '"Observed" Distribution')
 ax.fill_between(X, dist.cdf(X), np.heaviside(X - example_point, 1), alpha = 0.3, label = "CRPS")
 ax.set_xlabel("$x$")
 ax.set_ylabel("$F(x)$")
+ax.set_title("CRPS calculation")
 ax.legend()
 
 fig, ax = plt.subplots()
@@ -227,11 +232,74 @@ for sigma, color, offset in zip([0.01,0.1,1,10], plt.rcParams['axes.prop_cycle']
     twin.set_ylim([0, ps.crps_gaussian(X[-1], 0, sigma)])
 ax.legend(lines, [x.get_label() for x in lines], loc = "lower right")
 ax.set_title("CRPS")
-ax.set_xlabel("$x1$")
+ax.set_xlabel("$x$")
 
 
 
+#%% Vars
 
-#forecast
-#MAE, RMSE CRPS, VARS, 
+N = 10000
+T = 15
+N_steps = 100
+
+ar1 = 0.75**(1/N_steps)
+sigma = 1 / N_steps
+initial = -1
+alpha = 0.1
+
+
+model = sm.tsa.ARIMA([0,0], order = (1,0,0), trend = 'n')
+
+samples = model.simulate([ ar1, sigma], T*N_steps, repetitions=N, initial_state=initial).squeeze()
+samples = samples - initial
+
+X = np.linspace(0, T, num = T*N_steps)
+
+abs_diffs = np.abs(samples - samples[0,:])
+
+expected = np.zeros_like(X)
+expected[0] = initial
+var = np.zeros_like(X)
+for i in range(1,len(X)):
+    expected[i] = ar1*expected[i-1]
+    var[i] = ar1**2 * var[i-1] + sigma
+expected = expected - initial
+
+fig, ax = plt.subplots()
+p = ax.plot(X, expected, color = "black", label = '$E(x_t)$')
+plt.fill_between(X, expected + stats.norm().ppf(1-alpha)*np.sqrt(var), color = p[0].get_color(), alpha = 0.2)
+
+ax.plot(X, np.mean(abs_diffs, axis = 1), label = '$E(|x_t - x_0|)$')
+p = ax.plot(X, np.median(abs_diffs, axis = 1), label = '$Q_{0.5}(|x_t - x_0|)$')
+plt.fill_between(X, np.quantile(abs_diffs, 1-alpha, axis = 1), color = p[0].get_color(), alpha = 0.2)
+ax.legend()
+ax.set_xlabel("$t$")
+ax.set_ylabel("$x_t$")
+
+
+#%% Expected score as a function of variance
+
+sigmas = np.sqrt(np.logspace(-4,4,100))
+N = 10000
+K = 10
+z = stats.norm(scale = sigmas).rvs(( K, N,  len(sigmas)))
+
+mae = np.mean(np.abs(z), axis = 0)
+rmse = np.sqrt(np.mean(z**2, axis = 0))
+Vars = np.mean(np.abs(np.abs(z) - np.mean(np.abs(z)**0.5, axis = (0,1)))**0.5, axis = 0)
+crps = np.mean([ps.crps_gaussian(z[:,:,i], 0, s) for i, s in enumerate(sigmas)], axis = 1).T
+
+
+def mmq_plot(x, y, ax, alpha = 0.05, sided = 2):
+    ax.plot(x, np.mean(y, axis = 0))
+
+
+fig, ax = plt.subplots()
+
+mmq_plot(sigmas, mae, ax)
+mmq_plot(sigmas, rmse, ax)
+mmq_plot(sigmas, crps, ax)
+mmq_plot(sigmas, Vars, ax)
+ax.set_yscale("log")
+ax.set_xscale("log")
 
