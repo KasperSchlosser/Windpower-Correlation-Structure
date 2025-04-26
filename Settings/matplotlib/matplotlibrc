@@ -18,8 +18,8 @@ figure.autolayout: True # i like seeing a tight layout from the start
 
 # Set Grid
 axes.grid : True
-grid.alpha : 0.1
-
+# axes.grid.which : both
+grid.alpha : 0.3
 
 # Set x axis
 xtick.direction : in
