@@ -1,9 +1,8 @@
 **/*pdf
-*csv
-*npy
-*keras
-*pkl
 **/*pyc
-Results/**
+Results/*
 Data/*
 misc/*
+Settings/matplotlib/*
+
+!Settings/matplotlib/matplotlibrc
