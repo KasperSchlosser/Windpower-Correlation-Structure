@@ -24,6 +24,7 @@ dependencies:
  - spyder
  - tqdm
  - pytorch
+ - pytorch-forecasting
  - keras
  - r
  - r-quantreg

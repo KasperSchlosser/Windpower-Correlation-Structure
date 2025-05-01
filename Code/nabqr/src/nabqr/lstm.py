@@ -153,8 +153,8 @@ def train_model_lstm(
 
         # Training loop
         for i in range(0, len(x), batch_size):
-            x_batch = x[i : i + batch_size]
-            y_batch = y[i : i + batch_size]
+            x_batch = x[i: i + batch_size]
+            y_batch = y[i: i + batch_size]
 
             batch_train_loss = train_step(x_batch, y_batch)
             epoch_train_loss += batch_train_loss
@@ -169,8 +169,8 @@ def train_model_lstm(
         # Validation loop
         num_val_batches = 0
         for i in range(0, len(x_val), batch_size):
-            x_val_batch = x_val[i : i + batch_size]
-            y_val_batch = y_val[i : i + batch_size]
+            x_val_batch = x_val[i: i + batch_size]
+            y_val_batch = y_val[i: i + batch_size]
 
             batch_val_loss = val_step(x_val_batch, y_val_batch)
             epoch_val_loss += batch_val_loss
@@ -184,7 +184,7 @@ def train_model_lstm(
         )
 
     return model
-    
+
 
 def remove_straight_line_outliers(ensembles):
     """Remove ensemble members that are perfectly straight lines (constant slope).
