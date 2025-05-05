@@ -34,8 +34,6 @@ raw_ensembles = {}
 raw_observations = {}
 cleaned_ensembles = {}
 cleaned_observations = {}
-normalised_ensembles = {}
-normalised_observations = {}
 
 for ens, obs in zip(ensembles, observations):
 
@@ -57,33 +55,20 @@ for ens, obs in zip(ensembles, observations):
     # change problematic observations
     obs[obs < parameters["low_value"]] = parameters["low_value"]
 
+    # removes rows at times skipped by daylight-savings
+    obs = obs[ens.index]
+
     cleaned_ensembles[zone] = ens
     cleaned_observations[zone] = obs
 
-    min_val = parameters["Zone-Limits"][zone][1]
-    max_val = parameters["Zone-Limits"][zone][1]
-    normalised_ensembles[zone] = (ens - ens.min()) / (ens.max() - ens.min())
-    normalised_observations[zone] = (obs - min_val) / (max_val - min_val)
+
 # %%
-cleaned_ensembles = pd.concat(
-    cleaned_ensembles, keys=cleaned_ensembles.keys(), names=("Zone", "Time")
-)
-cleaned_observations = pd.concat(
-    cleaned_observations, keys=cleaned_observations.keys(), names=("Zone", "Time")
-)
-# drop the extra indexes in the observations
-cleaned_observations = cleaned_observations.loc[cleaned_ensembles.index]
+cleaned_ensembles = pd.concat(cleaned_ensembles, keys=cleaned_ensembles.keys(), names=("Zone", "Time"))
+cleaned_observations = pd.concat(cleaned_observations, keys=cleaned_observations.keys(), names=("Zone", "Time"))
 
 raw_ensembles = pd.concat(raw_ensembles, keys=raw_ensembles.keys(), names=("Zone", "Time"))
 raw_observations = pd.concat(raw_observations, keys=raw_observations.keys(), names=("Zone", "Time"))
 
-
-normalised_ensembles = pd.concat(
-    normalised_ensembles, keys=normalised_ensembles.keys(), names=("Zone", "Time")
-)
-normalised_observations = pd.concat(
-    normalised_observations, keys=normalised_observations.keys(), names=("Zone", "Time")
-)
 
 cleaned_ensembles.to_pickle(save_path / "cleaned_ensembles.pkl")
 cleaned_ensembles.to_csv(save_path / "cleaned_ensembles.csv")
@@ -96,9 +81,3 @@ raw_ensembles.to_csv(save_path / "raw_ensembles.csv")
 
 raw_observations.to_pickle(save_path / "raw_observations.pkl")
 raw_observations.to_csv(save_path / "raw_observations.csv")
-
-normalised_ensembles.to_pickle(save_path / "normalised_ensembles.pkl")
-normalised_ensembles.to_csv(save_path / "normalised_ensembles.csv")
-
-normalised_observations.to_pickle(save_path / "normalised_observations.pkl")
-normalised_observations.to_csv(save_path / "normalised_observations.csv")

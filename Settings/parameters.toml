@@ -1,4 +1,6 @@
 low_value = 0.01
+train_size = 15603
+
 
 Zones = ["DK1-offshore", "DK1-onshore", "DK2-offshore", "DK2-onshore"]
 
