@@ -1,17 +1,23 @@
 import pathlib
-import numpy as np
+import tomllib
+
 import pandas as pd
+import numpy as np
 
 import nabqra
 
-#from pandas import IndexSlice as idx
+from pandas import IndexSlice as idx
 from collections import defaultdict
 
-#%% load data
-
 PATH = pathlib.Path.cwd().parents[1]
-load_path = PATH / "Data" / "NABQR"
+load_path = PATH / "Data" / "Basis"
 save_path = PATH / "Data" / "Autocorrelation"
+
+with open(PATH / "Settings" / "parameters.toml", "rb") as f:
+    parameters = tomllib.load(f)
+    zones = parameters["Zones"]
+    zone_limits = parameters["Zone-Limits"]
+
 
 taqr_quantiles = pd.read_pickle(load_path / "taqr_quantiles.pkl")
 lstm_basis = pd.read_pickle(load_path / "corrected_ensembles.pkl")
@@ -24,12 +30,7 @@ date_index = taqr_quantiles.index
 quantiles_str = np.array(taqr_quantiles.columns.get_level_values(1).unique())
 quantiles = quantiles_str.astype(np.float64)
 
-zone_limits ={
-    "DK1-offshore": (0, 1300),
-    "DK1-onshore": (0,3600),
-    "DK2-offshore": (0,1100),
-    "DK2-onshore": (0, 650)
-    }
+zone_limits = {"DK1-offshore": (0, 1300), "DK1-onshore": (0, 3600), "DK2-offshore": (0, 1100), "DK2-onshore": (0, 650)}
 
 # there are some quantile crossings
 # fix by sorting
@@ -44,14 +45,13 @@ for zone in zones:
 actuals[actuals < 0.01] = 0.01
 
 # ensure everything has the same datapoints
-taqr_quantiles = taqr_quantiles.loc[date_index,:]
-lstm_basis = lstm_basis.loc[date_index,:]
-lstm_quantiles = lstm_quantiles.loc[date_index,:]
+taqr_quantiles = taqr_quantiles.loc[date_index, :]
+lstm_basis = lstm_basis.loc[date_index, :]
+lstm_quantiles = lstm_quantiles.loc[date_index, :]
 actuals = actuals.loc[date_index]
 
 
-
-#%% models
+# %% models
 
 global_params = {"n_sim": 200, "burnin": 240, "horizon": 24, "alpha": 0.02, "sided": 2}
 
@@ -61,50 +61,50 @@ models = {
         "quantile model": None,
         "quantile params": {},
         "correlation model": nabqra.correlation.sarma,
-        "correlation params": {"order":(4,0,0), "trend": 'c'}
-        },
-    "LSTM":{
+        "correlation params": {"order": (4, 0, 0), "trend": "c"},
+    },
+    "LSTM": {
         "basis": "lstm",
         "quantile model": nabqra.quantiles.spline_model,
         "quantile params": {},
         "correlation model": nabqra.correlation.dummy,
-        "correlation params": {}
-        },
+        "correlation params": {},
+    },
     "LSTM + SARMA": {
         "basis": "lstm",
         "quantile model": nabqra.quantiles.spline_model,
         "quantile params": {},
         "correlation model": nabqra.correlation.sarma,
-        "correlation params": {"order": (1,0,1), "seasonal_order": (1,0,1,24)}
-        },
+        "correlation params": {"order": (1, 0, 1), "seasonal_order": (1, 0, 1, 24)},
+    },
     "NABQR": {
         "basis": "taqr",
         "quantile model": nabqra.quantiles.spline_model,
         "quantile params": {},
         "correlation model": nabqra.correlation.dummy,
-        "correlation params": {}
-        },
+        "correlation params": {},
+    },
     "NABQR + SARMA": {
         "basis": "taqr",
         "quantile model": nabqra.quantiles.spline_model,
         "quantile params": {},
         "correlation model": nabqra.correlation.sarma,
-        "correlation params": {"order": (1,0,1), "seasonal_order": (1,0,1,24)}
-        }
-    }
+        "correlation params": {"order": (1, 0, 1), "seasonal_order": (1, 0, 1, 24)},
+    },
+}
 
 
-#%% make data frames
+# %% make data frames
 
-forecast_res = defaultdict(lambda : dict())
-simulation_res = defaultdict(lambda : dict())
+forecast_res = defaultdict(lambda: dict())
+simulation_res = defaultdict(lambda: dict())
 
 for zone, lim in zone_limits.items():
     for model, params in models.items():
-        print(f'{zone}, {model}:')
-        
+        print(f"{zone}, {model}:")
+
         obs = actuals[zone]
-        
+
         match params["basis"]:
             case "actuals":
                 estimated_quantiles = None
@@ -116,49 +116,50 @@ for zone, lim in zone_limits.items():
                 print("you did something weird, basis:")
                 print(wtf_mate)
                 raise ValueError
-        
+
         if params["quantile model"] is not None:
-            qm = params["quantile model"](quantiles,
-                                          *zone_limits[zone],
-                                          **params["quantile params"])
+            qm = params["quantile model"](quantiles, *zone_limits[zone], **params["quantile params"])
         else:
             qm = None
-        
-        cm = params["correlation model"](**params["correlation params"],**global_params,)
-        
+
+        cm = params["correlation model"](
+            **params["correlation params"],
+            **global_params,
+        )
+
         pipeline = nabqra.pipeline.pipeline(cm, qm)
-        
+
         res = pipeline.run(estimated_quantiles, obs)
-        
+
         forecast_res[zone][model] = res[0]
         simulation_res[zone][model] = res[1]
 
 
-#%% combine data
+# %% combine data
 
 forecast_dfs = []
 for zone, data in forecast_res.items():
-    df = pd.concat([df for df in data.values()], keys = data.keys(), axis = 1)
+    df = pd.concat([df for df in data.values()], keys=data.keys(), axis=1)
     forecast_dfs.append((zone, df))
-    
-forecast = pd.concat([x[1] for x in forecast_dfs], keys = [x[0] for x in forecast_dfs], axis = 1)
+
+forecast = pd.concat([x[1] for x in forecast_dfs], keys=[x[0] for x in forecast_dfs], axis=1)
 
 simulation_dfs = []
 for zone, data in simulation_res.items():
-    df = pd.concat([df for df in data.values()], keys = data.keys(), axis = 1)
+    df = pd.concat([df for df in data.values()], keys=data.keys(), axis=1)
     simulation_dfs.append((zone, df))
-    
-simulation = pd.concat([x[1] for x in simulation_dfs], keys = [x[0] for x in simulation_dfs], axis = 1)
 
-#remove burin period
+simulation = pd.concat([x[1] for x in simulation_dfs], keys=[x[0] for x in simulation_dfs], axis=1)
 
-forecast = forecast.iloc(axis = 0)[global_params["burnin"]:]
-simulation = simulation.iloc(axis = 0)[global_params["burnin"]:]
+# remove burin period
 
-#%% save data
+forecast = forecast.iloc(axis=0)[global_params["burnin"] :]
+simulation = simulation.iloc(axis=0)[global_params["burnin"] :]
+
+# %% save data
 
 forecast.to_pickle(save_path / "forecast results.pkl")
 forecast.to_csv(save_path / "forecast results.csv")
 
 simulation.to_pickle(save_path / "simulation results.pkl")
-#simulation.to_csv(save_path / "simulation results.csv") #maybe not save this as cvs, currently 1.6 gb, woops
+# simulation.to_csv(save_path / "simulation results.csv") #maybe not save this as cvs, currently 1.6 gb, woops

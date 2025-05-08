@@ -627,7 +627,7 @@ def one_step_quantile_prediction(
     Iex = p + 1
     bins = np.array([-np.inf, np.inf])
     tau = quantile
-    n_in_bin = [bin_size]
+    n_in_bin = bin_size
 
     n_input = n_in_X
     N, BETA, GAIN, Ld, Rny, Mx, Re, CON1, T = rq_simplex_final(
