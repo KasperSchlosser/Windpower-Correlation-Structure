@@ -11,6 +11,7 @@ import keras.ops as ops
 from itertools import product
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from nabqra.scoring import Quantileloss
 
 # from pandas import IndexSlice as idx
 
@@ -55,20 +56,6 @@ class NABQRDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         return self.X[idx + self.start - self.timesteps, :], self.Y[idx]
-
-
-class Quantileloss(keras.losses.Loss):
-    def __init__(self, quantiles, **kwargs):
-        super().__init__(**kwargs)
-        self.quantiles = torch.tensor(quantiles)
-        self.neg_quantiles = self.quantiles - 1
-
-    def call(self, y_true, y_pred):
-        d = (y_true - y_pred.T).T
-        x1 = self.quantiles * d
-        x2 = self.neg_quantiles * d
-
-        return ops.sum(ops.maximum(x1, x2), axis=-1)
 
 
 # %% define models

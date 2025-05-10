@@ -698,3 +698,117 @@ def run_taqr(corrected_ensembles, actuals, quantiles, n_init, n_full, n_in_X, bi
         BETA_output.append(BETA_q)
 
     return taqr_results, actuals_output[1], BETA_output
+
+
+# %%
+import scipy.stats as stats
+import pandas as pd
+
+import matplotlib.pyplot as plt
+
+# problems
+# need more than 1 input variable. crash otherwise
+# crash if only 1 quantile (actuals_output[1])
+# cannot change bin_size
+
+
+import pathlib
+
+PATH = pathlib.Path.cwd().parents[1]
+
+save_path = PATH / "Results" / "TAQR"
+
+
+# %% alignment issue
+
+N = 50
+sigma = 0.1
+loc = -3
+
+X = np.tile([0, 0, 0, 0, 0, 1, 1, 1, 1, 1], N // 10)[:, np.newaxis]
+
+X = np.concat((np.ones((N, 1)), X), axis=1)
+y = X[:, 1] + sigma * stats.norm().rvs(N, random_state=32) + loc
+
+ix = np.arange(len(y))
+
+
+X = pd.DataFrame(X, columns=["const", "var"], index=ix)
+y = pd.DataFrame(y, columns=["observation"], index=ix)
+
+
+init = 10
+est_quant, taqr_obs, beta = run_taqr(X, y, [0.1, 0.5, 0.9], init, N, init)
+
+save_idx = ix[init + 1 : N - 1]
+taqr_obs = pd.Series(taqr_obs.flatten(), index=save_idx)
+taqr_res = pd.DataFrame(np.array(est_quant).T, index=save_idx)
+
+fig, ax = plt.subplots()
+plt.scatter(y.index, y, color="black", label="True obs")
+plt.scatter(taqr_obs.index, taqr_obs, color="black", marker="x", label="TAQR obs")
+
+l = plt.plot(X.index, X.iloc[:, -1] + loc, label="True Estimate")
+plt.fill_between(
+    X.index,
+    X.iloc[:, -1] + loc + stats.norm(scale=sigma).ppf(0.1),
+    X.iloc[:, -1] + loc + stats.norm(scale=sigma).ppf(0.9),
+    color=l[0].get_color(),
+    alpha=0.3,
+)
+
+l = plt.plot(taqr_res.index, taqr_res.iloc[:, 1], label="TAQR Estimates")
+plt.fill_between(taqr_res.index, taqr_res.iloc[:, 0], taqr_res.iloc[:, 2], color=l[0].get_color(), alpha=0.3)
+
+plt.legend()
+# %%
+true_obs = y.values.squeeze()
+taqr_obs = taqr_obs.squeeze()
+true_est = (X.loc[:, "var"] + loc).values.squeeze()
+taqr_est = taqr_res[1].values.squeeze()
+
+
+res = pd.DataFrame(index=["True Estimate", "Taqr Estimate"], columns=["Correct Alignment", "Taqr Alignment"])
+
+res.loc["True Estimate", "Correct Alignment"] = np.abs(true_est[-len(taqr_est) :] - true_obs[-len(taqr_est) :]).mean()
+res.loc["Taqr Estimate", "Correct Alignment"] = np.abs(taqr_est - true_obs[-len(taqr_est) :]).mean()
+res.loc["True Estimate", "Taqr Alignment"] = np.abs(true_est[save_idx] - taqr_obs).mean()
+res.loc["Taqr Estimate", "Taqr Alignment"] = np.abs(taqr_est - taqr_obs).mean()
+print(res)
+
+# %% init influence
+
+N = 5000
+scale = 1
+
+X = stats.norm(scale=1).rvs((N, 1))
+X = np.concat((np.ones((N, 1)), X), axis=1)
+
+beta = stats.norm(scale=1).rvs(N, random_state=12).cumsum()[:, np.newaxis]
+beta = np.concat((beta, 0.0001 * np.ones((N, 1))), axis=1)
+
+y = np.vecdot(X, beta) + stats.norm(scale=scale).rvs(N, random_state=42)
+true = np.vecdot(X, beta)
+ix = np.arange(len(y))
+
+
+fig, ax = plt.subplots()
+fig, ax2 = plt.subplots()
+
+l = ax.plot(ix, true, label="True")
+ax.fill_between(
+    ix, true + stats.norm().ppf(0.1) * scale, true + stats.norm().ppf(0.9) * scale, color=l[0].get_color(), alpha=0.3
+)
+ax2.plot(ix, beta[:, 0], label="True")
+
+for init in [3, 500, 1000, 2500, 4000]:
+    est_quant, _, est_beta = run_taqr(X, y, [0.1, 0.5, 0.9], init, N, init)
+
+    l = ax.plot(ix[init + 2 :], est_quant[1], label=f"initialization: {init} observations")
+
+    ax2.plot(ix[init + 1 :], est_beta[1][:, 0], label=f"initialization: {init} observations")
+
+ax.legend()
+ax.set_title("50% Quantile")
+ax2.legend()
+ax2.set_title("Beta_0")
