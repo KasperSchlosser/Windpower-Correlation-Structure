@@ -30,58 +30,24 @@ def fix_quantiles(quantiles: pd.DataFrame, min_val: float, max_val: float) -> pd
     The missing values are filled by linear interpoltion to edges of interval
     """
     index = quantiles.index
-    
-    # Sort quantile values
     fixed_quantiles = quantiles.copy()
-    fixed_quantiles.loc[idx[:], idx[:]] = np.sort(fixed_quantiles.to_numpy(), axis=1)
-    
+
     # Replace all values outside of limits with NaNs
     mask = (fixed_quantiles > min_val) & (fixed_quantiles < max_val)
     fixed_quantiles = fixed_quantiles.where(mask, other=np.nan)
-    
+
     # Add columns with min and max values for interpolation
     fixed_quantiles = pd.concat(
-        (
-            pd.Series(min_val, index=index),
-            fixed_quantiles,
-            pd.Series(max_val, index=index)
-        ),
-        axis=1
+        (pd.Series(min_val, index=index), fixed_quantiles, pd.Series(max_val, index=index)), axis=1
     )
-    
+
     # Perform linear interpolation
     fixed_quantiles = fixed_quantiles.interpolate(axis=1)
-    
+
     # Drop the extra columns
     fixed_quantiles = fixed_quantiles.drop(columns=fixed_quantiles.columns[[0, -1]])
-    
-    return fixed_quantiles
 
+    # Sort quantile values
+    fixed_quantiles.loc[idx[:], idx[:]] = np.sort(fixed_quantiles.to_numpy(), axis=1)
 
-    
-    index = quantiles.index
-    
-    #sort quantile values
-    fixed_quantiles = quantiles.copy()
-    fixed_quantiles.loc[idx[:], idx[:]] = np.sort(fixed_quantiles.to_numpy(), axis = 1)
-    
-    # replace all values outside of limits with nans
-    mask = (fixed_quantiles > min_val) & (fixed_quantiles < max_val)
-    fixed_quantiles = fixed_quantiles.where(mask, other = np.nan)
-    
-    #add cols with min and max values for interpolation
-    fixed_quantiles = pd.concat((
-            pd.Series(min_val, index = index),
-            fixed_quantiles,
-            pd.Series(max_val, index = index)
-        ),
-        axis = 1
-    )
-    
-    #perform linear interpolation
-    fixed_quantiles = fixed_quantiles.interpolate(axis = 1)
-    
-    #drop the extra columns
-    fixed_quantiles = fixed_quantiles.drop(columns = fixed_quantiles.columns[[0,-1]])
-    
     return fixed_quantiles

@@ -6,7 +6,6 @@ import numpy as np
 import torch
 
 import keras
-import keras.ops as ops
 
 from itertools import product
 from torch.utils.data import DataLoader
