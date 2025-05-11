@@ -761,19 +761,51 @@ l = plt.plot(taqr_res.index, taqr_res.iloc[:, 1], label="TAQR Estimates")
 plt.fill_between(taqr_res.index, taqr_res.iloc[:, 0], taqr_res.iloc[:, 2], color=l[0].get_color(), alpha=0.3)
 
 plt.legend()
-# %%
-true_obs = y.values.squeeze()
-taqr_obs = taqr_obs.squeeze()
-true_est = (X.loc[:, "var"] + loc).values.squeeze()
-taqr_est = taqr_res[1].values.squeeze()
+# %% taqr estimate "better" than True
 
+N = 50
+sigma = 0.1
+loc = -3
 
+X = stats.norm(scale=0.0001).rvs((N, 1), random_state=12)
+X = np.concat((np.ones((N, 1)), X), axis=1)
+
+y_true = np.tile([0, 1], N // 2) + loc
+y = y_true + stats.norm(scale=sigma).rvs(N, random_state=12)
+
+ix = np.arange(len(y))
+
+fig, ax = plt.subplots()
+l = plt.plot(ix, y_true, label="True Estimate")
+plt.fill_between(
+    ix,
+    y_true + stats.norm(scale=sigma).ppf(0.1),
+    y_true + stats.norm(scale=sigma).ppf(0.9),
+    color=l[0].get_color(),
+    alpha=0.3,
+)
+
+init = 3
+est_quant, taqr_obs, beta = run_taqr(X, y, [0.1, 0.5, 0.9], init, N, init)
+
+l = plt.plot(ix[init + 1 : -1], est_quant[1], label="Taqr Estimate")
+plt.fill_between(
+    ix[init + 1 : -1],
+    est_quant[0],
+    est_quant[2],
+    color=l[0].get_color(),
+    alpha=0.3,
+)
+
+# plt.scatter(ix, y, color="black", label="True obs")
+plt.scatter(ix[init + 1 : -1], taqr_obs, color="black", marker="x", label="TAQR obs")
+plt.legend()
 res = pd.DataFrame(index=["True Estimate", "Taqr Estimate"], columns=["Correct Alignment", "Taqr Alignment"])
 
-res.loc["True Estimate", "Correct Alignment"] = np.abs(true_est[-len(taqr_est) :] - true_obs[-len(taqr_est) :]).mean()
-res.loc["Taqr Estimate", "Correct Alignment"] = np.abs(taqr_est - true_obs[-len(taqr_est) :]).mean()
-res.loc["True Estimate", "Taqr Alignment"] = np.abs(true_est[save_idx] - taqr_obs).mean()
-res.loc["Taqr Estimate", "Taqr Alignment"] = np.abs(taqr_est - taqr_obs).mean()
+res.loc["True Estimate", "Correct Alignment"] = np.abs(y_true[init + 2 :] - y[init + 2 :]).mean()
+res.loc["Taqr Estimate", "Correct Alignment"] = np.abs(est_quant[1] - y[init + 2 :]).mean()
+res.loc["True Estimate", "Taqr Alignment"] = np.abs(y_true[init + 1 : -1] - taqr_obs).mean()
+res.loc["Taqr Estimate", "Taqr Alignment"] = np.abs(est_quant[1] - taqr_obs).mean()
 print(res)
 
 # %% init influence
@@ -781,7 +813,7 @@ print(res)
 N = 5000
 scale = 1
 
-X = stats.norm(scale=1).rvs((N, 1))
+X = stats.norm(scale=1).rvs((N, 1), random_state=12)
 X = np.concat((np.ones((N, 1)), X), axis=1)
 
 beta = stats.norm(scale=1).rvs(N, random_state=12).cumsum()[:, np.newaxis]
