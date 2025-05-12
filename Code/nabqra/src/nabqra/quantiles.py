@@ -1,4 +1,3 @@
-
 import numpy as np
 import scipy.stats as stats
 import scipy.interpolate as interpolate
@@ -12,10 +11,11 @@ import scipy.interpolate as interpolate
 # Backwards takes from cdf-space back to original space
 # model.quantile(u): F^-1(u) = x
 
-class quantile_model():
-    def __init__(self, quantiles, min_val=None, max_val=None, dist=stats.norm(), *args, **kwargs):
 
-        quant = np.zeros(len(quantiles)+2)
+class quantile_model:
+    def __init__(self, quantiles, min_val=None, max_val=None, *args, **kwargs):
+
+        quant = np.zeros(len(quantiles) + 2)
         quant[1:-1] = quantiles
         quant[0] = 0
         quant[-1] = 1
@@ -25,13 +25,11 @@ class quantile_model():
         self.max_val = max_val
         self.min_val = min_val
 
-        self.dist = dist
-
         return
 
     def fit(self, est_quantiles):
 
-        self.q_vals = np.zeros(len(est_quantiles)+2)
+        self.q_vals = np.zeros(len(est_quantiles) + 2)
         self.q_vals[1:-1] = est_quantiles
 
         self.q_vals[-1] = self.max_val
@@ -156,6 +154,12 @@ class quantile_model():
 
         return orig, pseudo_resids
 
+    def make_sim(self, est_quantiles, n_sim=100, random_state=None):
+
+        resids = stats.norm().rvs((len(est_quantiles), n_sim))
+
+        return self.back_transform(est_quantiles, resids)[0]
+
 
 class constant_model(quantile_model):
     def _cdf(self, y):
@@ -193,7 +197,7 @@ class linear_model(quantile_model):
                 b = 0
 
             case -1, True:
-                a = - dq / dx**2
+                a = -dq / dx**2
                 b = 2 * dq / dx
 
             case _:
@@ -206,7 +210,7 @@ class linear_model(quantile_model):
         conds = (y >= self.q_vals[:-1]) & (y <= self.q_vals[1:])
 
         ix = np.argmax(conds)
-        if ix == len(conds)-1:
+        if ix == len(conds) - 1:
             ix = -1
 
         dq = self.dq[ix]
@@ -224,7 +228,7 @@ class linear_model(quantile_model):
         conds = (u >= self.quantiles[:-1]) & (u <= self.quantiles[1:])
 
         ix = np.argmax(conds)
-        if ix == len(conds)-1:
+        if ix == len(conds) - 1:
             ix = -1
 
         dq = self.dq[ix]
@@ -236,7 +240,7 @@ class linear_model(quantile_model):
         a, b = self._get_poly_coef(ix, dq, dx)
 
         if a != 0:
-            res = (-b + np.sqrt(b**2 + 4*a*x)) / (2*a)
+            res = (-b + np.sqrt(b**2 + 4 * a * x)) / (2 * a)
         else:
             res = x / b
         return res + base_val
@@ -245,7 +249,7 @@ class linear_model(quantile_model):
         conds = (y >= self.q_vals[:-1]) & (y <= self.q_vals[1:])
 
         ix = np.argmax(conds)
-        if ix == len(conds)-1:
+        if ix == len(conds) - 1:
             ix = -1
 
         dq = self.dq[ix]
@@ -255,7 +259,7 @@ class linear_model(quantile_model):
 
         a, b = self._get_poly_coef(ix, dq, dx)
 
-        return 2*a*x + b
+        return 2 * a * x + b
 
 
 class spline_model(quantile_model):
