@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import keras
+import torch
 
 from pandas import IndexSlice as idx
 
@@ -51,3 +53,33 @@ def fix_quantiles(quantiles: pd.DataFrame, min_val: float, max_val: float) -> pd
     fixed_quantiles.loc[idx[:], idx[:]] = np.sort(fixed_quantiles.to_numpy(), axis=1)
 
     return fixed_quantiles
+
+
+class NABQRDataset(torch.utils.data.Dataset):
+
+    def __init__(self, X, Y, timesteps=(0,), reverse=False, preprocessing=None):
+
+        self.timesteps = torch.tensor(timesteps, dtype=torch.int)
+        self.start = self.timesteps.max()
+        self.Y = torch.tensor(Y)
+
+        if preprocessing is not None:
+            X = preprocessing.transform(X)
+
+        self.X = torch.tensor(X)
+
+        if self.timesteps.max() > 0:
+            pad = torch.zeros((self.timesteps.max(), X.shape[-1]))
+            self.X = torch.cat((pad, self.X))
+
+        self.start = self.timesteps.max()
+        self.length = self.Y.size(-1)
+
+        if reverse:
+            self.timesteps = torch.flip(self.timesteps, (-1,))
+
+    def __len__(self):
+        return self.Y.size(-1)
+
+    def __getitem__(self, idx):
+        return self.X[idx + self.start - self.timesteps, :], self.Y[idx]

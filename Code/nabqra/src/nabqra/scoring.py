@@ -27,7 +27,7 @@ def variogram_weight(simulations, p=0.5, window=24, offset=24):
     return weights
 
 
-def variogram_score(simulations, actuals, p=0.5, window=24, offset=24, weights=None):
+def variogram_score(simulations, actuals, p=0.5, window=24, offset=24, weight=None):
 
     # simualtions are n observations times m simulations
     n, m = simulations.shape
@@ -36,36 +36,39 @@ def variogram_score(simulations, actuals, p=0.5, window=24, offset=24, weights=N
     variogram = np.zeros((window, window))
     n_windows = (n - offset) // window
 
-    if weights is None:
-        weights = np.array([[abs(i - j) for i in range(0, window)] for j in range(0, window)])
-        np.fill_diagonal(weights, 1)  # just to not get warning, is not used
-        weights = 1 / weights
-        weights = np.repeat(
-            weights[
-                np.newaxis,
-                :,
-                :,
-            ],
-            n_windows,
-            axis=0,
-        )
+    if weight is None:
 
-    for k, start in enumerate(range(offset, n, window)):
+        weight = np.ones((window, window))
+        # weight = np.arange(window)
+        # weight = np.abs(np.subtract.outer(weight, weight))
+        # weight = 1/weight
+        np.fill_diagonal(weight, 0)
+        weight = weight / weight.sum()
 
+    for start in range(offset, n, window):
+
+        # just ignore trailing part
         if start + window > n:
             break
 
-        for i in range(0, window - 1):
-            for j in range(i + 1, window):
-                Ediff = np.abs(simulations[start + i, :] - simulations[start + j, :]) ** p
-                Adiff = np.abs(actuals[start + i] - actuals[start + j]) ** p
+        for lag in range(1, window):
 
-                s = weights[k, i, j] * (Adiff - np.mean(Ediff)) ** 2
-                variogram[i, j] += s
-                variogram[j, i] += s
-                score += s
+            Ediff = simulations[start : start + window - lag, :] - simulations[start + lag : start + window, :]
+            Ediff = np.abs(Ediff) ** p
+            Ediff = np.mean(Ediff, axis=1)
 
-    return score / n_windows, variogram / n_windows
+            Adiff = actuals[start : start + window - lag] - actuals[start + lag : start + window]
+            Adiff = np.abs(Adiff) ** p
+
+            scores = np.abs(Adiff - Ediff) ** (1 / p)
+
+            variogram += np.diagflat(scores, lag)
+            variogram += np.diagflat(scores, -lag)
+
+    variogram /= n_windows
+    score = (weight * variogram).sum()
+
+    return score, variogram
 
 
 def continous_ranked_probability_score(simulations, actuals):
@@ -79,6 +82,10 @@ def mean_average_error(actuals, predicted):
 
 def mean_squared_error(actuals, predicted):
     return np.mean((actuals - predicted) ** 2)
+
+
+def root_mean_squared_error(actuals, predicted):
+    return np.sqrt(mean_squared_error(actuals, predicted))
 
 
 class Quantileloss(keras.losses.Loss):
@@ -103,11 +110,11 @@ def calc_scores(actuals, predicted, simulations, VARS_kwargs=None):
         VARS_kwargs = dict()
 
     MAE = mean_average_error(actuals, predicted)
-    MSE = mean_squared_error(actuals, predicted)
+    RMSE = root_mean_squared_error(actuals, predicted)
     VARS = variogram_score(simulations, actuals, **VARS_kwargs)[0]
     CRPS = continous_ranked_probability_score(simulations, actuals)
 
-    return MAE, MSE, VARS, CRPS
+    return MAE, RMSE, CRPS, VARS
 
 
 def continous_wasserstein(F_inv, G_inv, lims=(1e-8, 1 - 1e-8), order=1, **kwargs):

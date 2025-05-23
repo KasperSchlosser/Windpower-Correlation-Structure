@@ -3,18 +3,18 @@ import tomllib
 
 import pandas as pd
 import numpy as np
-import torch
 
 import keras
 
 from itertools import product
 from torch.utils.data import DataLoader
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 from nabqra.scoring import Quantileloss
+from nabqra.misc import NABQRDataset
 
 # from pandas import IndexSlice as idx
 
-keras.utils.set_random_seed(666)
+keras.utils.set_random_seed(42)
 
 PATH = pathlib.Path.cwd().parents[1]
 load_path = PATH / "Data" / "Data"
@@ -26,44 +26,8 @@ with open(PATH / "Settings" / "parameters.toml", "rb") as f:
     zone_limits = parameters["Zone-Limits"]
     train_size = parameters["train_size"]
 
-
-class NABQRDataset(torch.utils.data.Dataset):
-
-    def __init__(self, X, Y, timesteps=(0,), reverse=False, preprocessing=None):
-
-        self.timesteps = torch.tensor(timesteps, dtype=torch.int)
-        self.start = self.timesteps.max()
-        self.Y = torch.tensor(Y)
-
-        if preprocessing is not None:
-            X = preprocessing.transform(X)
-
-        self.X = torch.tensor(X)
-
-        if self.timesteps.max() > 0:
-            pad = torch.zeros((self.timesteps.max(), X.shape[-1]))
-            self.X = torch.cat((pad, self.X))
-
-        self.start = self.timesteps.max()
-        self.length = self.Y.size(-1)
-
-        if reverse:
-            self.timesteps = torch.flip(self.timesteps, (-1,))
-
-    def __len__(self):
-        return self.Y.size(-1)
-
-    def __getitem__(self, idx):
-        return self.X[idx + self.start - self.timesteps, :], self.Y[idx]
-
-
-# %% define models
-# load input, augment with additional data
+# load input
 ensembles = pd.read_pickle(load_path / "cleaned_ensembles.pkl")
-# ensembles["Month-cos"] = np.cos(ensembles.index.get_level_values(1).month * 2 * np.pi / 12)
-# ensembles["Month-sin"] = np.sin(ensembles.index.get_level_values(1).month * 2 * np.pi / 12)
-# ensembles["Hour-cos"] = np.cos(ensembles.index.get_level_values(1).hour * 2 * np.pi / 24)
-# ensembles["Hour-sin"] = np.sin(ensembles.index.get_level_values(1).hour * 2 * np.pi / 24)
 
 observations = pd.read_pickle(load_path / "cleaned_observations.pkl")
 obs_max = observations.groupby("Zone").max()
@@ -74,27 +38,14 @@ date_index = ensembles.index.unique(level=1)
 quantiles_str = [f"{x:.2f}" for x in parameters["Quantiles"]]
 Loss = Quantileloss(parameters["Quantiles"])
 
+
+# %% define models
 models = [
     {
-        "name": "Original - Relu",
+        "name": "NABQR",
         "model_config": keras.Sequential(
             [
-                keras.Input(shape=(7, 52)),
-                keras.layers.LSTM(256, return_sequences=False),
-                keras.layers.Dense(len(parameters["Quantiles"]), activation="sigmoid"),
-                keras.layers.Dense(len(parameters["Quantiles"]), activation="relu"),
-            ]
-        ).get_config(),
-        "opt_args": {"learning_rate": 1e-3},
-        "data_args": {"reverse": False, "timesteps": (0, 1, 2, 5, 11, 23, 47), "preprocessing": MinMaxScaler()},
-        "loader_args": {"batch_size": 24 * 7},
-        "fit_args": {"epochs": 2},
-    },
-    {
-        "name": "Original - Identity",
-        "model_config": keras.Sequential(
-            [
-                keras.Input(shape=(7, 52)),
+                keras.Input(shape=(7, ensembles.shape[-1])),
                 keras.layers.LSTM(256, return_sequences=False),
                 keras.layers.Dense(len(parameters["Quantiles"]), activation="sigmoid"),
                 keras.layers.Dense(len(parameters["Quantiles"])),
@@ -102,23 +53,49 @@ models = [
         ).get_config(),
         "opt_args": {"learning_rate": 1e-3},
         "data_args": {"reverse": False, "timesteps": (0, 1, 2, 5, 11, 23, 47), "preprocessing": MinMaxScaler()},
-        "loader_args": {"batch_size": 24 * 7},
-        "fit_args": {"epochs": 10},
+        "loader_args": {
+            "batch_size": 24 * 7,
+        },
+        "fit_args": {"epochs": 200},
     },
     {
         "name": "Simple",
         "model_config": keras.Sequential(
             [
                 keras.Input(shape=(1, ensembles.shape[-1])),
-                keras.layers.GaussianNoise(stddev=0.1),
-                keras.layers.Dense(3),
+                keras.layers.Dense(1),
                 keras.layers.Dense(len(parameters["Quantiles"])),
             ]
         ).get_config(),
         "opt_args": {"learning_rate": 1e-3},
-        "data_args": {"reverse": True, "timesteps": (0,), "preprocessing": StandardScaler()},
-        "loader_args": {"batch_size": 12 * 1, "shuffle": False},
-        "fit_args": {"epochs": 10},
+        "data_args": {"reverse": True, "timesteps": (0,), "preprocessing": MinMaxScaler(feature_range=(-1, 1))},
+        "loader_args": {"batch_size": 6 * 1, "shuffle": False},
+        "fit_args": {"epochs": 200},
+    },
+    {
+        "name": "Feature",
+        "model_config": keras.Sequential(
+            [
+                keras.Input(shape=(4, ensembles.shape[-1])),
+                keras.layers.Flatten(),
+                keras.layers.GaussianNoise(0.1),
+                keras.layers.Dense(20),
+                keras.layers.ELU(),
+                keras.layers.Dense(10),
+                keras.layers.ELU(),
+                keras.layers.Dense(5),
+                keras.layers.Dense(10),
+                keras.layers.Dense(len(parameters["Quantiles"])),
+            ]
+        ).get_config(),
+        "opt_args": {"learning_rate": 1e-3},
+        "data_args": {
+            "reverse": True,
+            "timesteps": (0, 5, 11, 23),
+            "preprocessing": MinMaxScaler(feature_range=(-1, 1)),
+        },
+        "loader_args": {"batch_size": 6 * 1, "shuffle": False},
+        "fit_args": {"epochs": 200},
     },
 ]
 
@@ -126,7 +103,7 @@ models = [
 
 history = {z: {} for z in zones}
 predictions = {z: {} for z in zones}
-features = pd.DataFrame(index=ensembles.index, columns=["Feature 1", "Feature 2", "Feature 3"], dtype=np.float64)
+features = pd.DataFrame(index=ensembles.index, columns=[f"Feature {x+1}" for x in range(5)], dtype=np.float64)
 
 
 for zone, vals in product(zones, models):
@@ -156,9 +133,10 @@ for zone, vals in product(zones, models):
     test_data = DataLoader(test_data, **vals["loader_args"])
 
     model = keras.Sequential.from_config(vals["model_config"])
-    model.compile(loss=Loss, optimizer=keras.optimizers.Adam(**vals["opt_args"]))
+    model.compile(loss=Quantileloss(parameters["Quantiles"]), optimizer=keras.optimizers.Adam(**vals["opt_args"]))
+    val_stop = keras.callbacks.EarlyStopping(monitor="val_loss", patience=20, restore_best_weights=True)
 
-    hist = model.fit(train_data, validation_data=test_data, **vals["fit_args"])
+    hist = model.fit(train_data, validation_data=test_data, **vals["fit_args"], callbacks=[val_stop])
     preds = model.predict(full_data)
 
     history[zone][name] = pd.DataFrame(hist.history)
@@ -166,9 +144,8 @@ for zone, vals in product(zones, models):
 
     predictions[zone][name] = pd.DataFrame(preds.squeeze(), index=date_index, columns=quantiles_str)
 
-    # i want to use the reduced space as features for regression
-    if name == "Simple":
-        extractor = keras.Model(inputs=model.inputs, outputs=model.layers[1].output)
+    if name == "Feature":
+        extractor = keras.Model(inputs=model.inputs, outputs=model.layers[6].output)
         features.loc(axis=0)[zone, :] = extractor.predict(full_data).squeeze()
 
 
@@ -202,13 +179,13 @@ predictions_original = predictions.mul(obs_max, axis=0)
 
 
 # %%
-history.to_csv(save_path / "history.csv")
-history.to_pickle(save_path / "history.pkl")
+history.to_csv(save_path / "History.csv")
+history.to_pickle(save_path / "History.pkl")
 
-predictions.to_csv(save_path / "Basis Normalised.csv")
-predictions.to_pickle(save_path / "Basis Normalised.pkl")
-predictions_original.to_csv(save_path / "Basis Quantiles.csv")
-predictions_original.to_pickle(save_path / "Basis Quantiles.pkl")
+predictions.to_csv(save_path / "Basis normalised.csv")
+predictions.to_pickle(save_path / "Basis normalised.pkl")
+predictions_original.to_csv(save_path / "NN quantiles.csv")
+predictions_original.to_pickle(save_path / "NN quantiles.pkl")
 
 features.to_csv(save_path / "Features.csv")
 features.to_pickle(save_path / "Features.pkl")

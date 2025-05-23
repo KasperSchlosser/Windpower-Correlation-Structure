@@ -1,141 +1,111 @@
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 
+import numpy as np
 import statsmodels.api as sm
 import scipy.stats as stats
 
 
-def plot_autocorrelation(values, name,
-                         estimator="ACF", alpha=0.05, nlags=48,
-                         ax=None, fig_kwargs=None,
-                         save_path=None):
+def _plot_correlation_function(values, ax, alpha, nlags, title, ylabel, func):
+    corr, confint = func(values, alpha=alpha, nlags=nlags)
+    lags = list(range(len(corr)))
+    bars = ax.bar(lags, corr)
 
-    if fig_kwargs is None:
-        fig_kwargs = dict()
+    lower_confidence = confint[:, 0] - corr
+    upper_confidence = confint[:, 1] - corr
+    ax.fill_between(lags, lower_confidence, upper_confidence, color=bars[0].get_facecolor(), alpha=0.3)
 
-    if ax is None:
-        fig, ax = plt.subplots(**fig_kwargs)
-    else:
-        fig = ax.get_figure()
-
-    match estimator:
-        case "ACF":
-            stat = "ACF"
-            corr, interval = sm.tsa.acf(values, alpha=alpha, nlags=nlags)
-        case "PACF":
-            stat = "PACF"
-            corr, interval = sm.tsa.pacf(values, alpha=alpha, nlags=nlags)
-
-    X = list(range(len(corr)))
-
-    l = ax.bar(X, corr)
-    ax.fill_between(X, interval[:, 0] - corr, interval[:, 1] - corr,
-                    color=l.get_children()[0].get_facecolor(),
-                    alpha=0.3)
-
-    ax.set_title(name)
-    ax.set_ylabel(estimator)
     ax.set_xlabel("Lag")
-
-    if save_path is not None:
-        fig.savefig(save_path / f'{name}_{stat}')
-        plt.close(fig)
-    return fig, ax
+    ax.set_ylabel(ylabel)
 
 
-def pseudoresid_diagnostics(normal_resids, name,
-                            alpha=0.05,
-                            num_points=1000, nlags=72,
-                            fig_kwargs=None, save_path=None):
+def plot_acf(values, ax, alpha=0.05, nlags=48):
+    _plot_correlation_function(values, ax, alpha, nlags, "ACF Plot", "ACF", sm.tsa.acf)
 
-    if fig_kwargs is None:
-        fig_kwargs = {}
 
-    dist = stats.norm()
+def plot_pacf(values, ax, alpha=0.05, nlags=48):
+    _plot_correlation_function(values, ax, alpha, nlags, "PACF Plot", "PACF", sm.tsa.pacf)
 
-    index = normal_resids.index
-    X = np.linspace(normal_resids.min(), normal_resids.max(), num_points)
 
-    alpha_bonferroni = alpha / len(normal_resids)
-    cdf_resids = dist.cdf(normal_resids)
-
-    # cdf distribution
-    fig, ax = plt.subplots(**fig_kwargs)
-
-    ax.hist(cdf_resids, density=True)
-    ax.hlines(1, 0, 1, colors='black', linestyles='dashed')
-    ax.set_title(name)
+def plot_uniform_histogram(uniform_residuals, ax):
+    ax.hist(uniform_residuals, density=True)
+    ax.hlines(1, 0, 1, colors="black", linestyles="dashed")
     ax.set_xlabel("u")
     ax.set_ylabel("Density")
 
-    if save_path is not None:
-        fig.savefig(save_path / f'{name}_cdfdist')
-        plt.close(fig)
 
-    # normal distribution
-    fig, ax = plt.subplots(**fig_kwargs)
-    ax.hist(normal_resids, density=True)
-    ax.plot(X, dist.pdf(X), color='black', linestyle='dashed')
-    ax.set_title(name)
+def plot_normal_histogram(normal_residuals, ax):
+    xgrid = np.linspace(min(normal_residuals), max(normal_residuals), 1000)
+    kde = stats.gaussian_kde(normal_residuals)
+
+    ax.hist(normal_residuals, density=True, bins=20)
+    ax.plot(xgrid, kde(xgrid), label="KDE")
+    ax.plot(xgrid, stats.norm.pdf(xgrid), color="black", linestyle="dashed", label="Standard Normal PDF")
+
     ax.set_xlabel("z")
     ax.set_ylabel("Density")
 
-    if save_path is not None:
-        fig.savefig(save_path / f'{name}_normaldist')
-        plt.close(fig)
 
-    # outlier plot
-    fig, ax = plt.subplots(**fig_kwargs)
+def plot_outliers(normal_residuals, index, ax, alpha=0.05):
 
-    ax.scatter(index, normal_resids)
-    ax.hlines(0, index[0], index[-1], color="black")
-    ax.hlines(dist.ppf([alpha / 2, 1 - alpha / 2]), index[0], index[-1], color="green")
-    ax.hlines(dist.ppf([alpha_bonferroni / 2, 1 - alpha_bonferroni / 2]),
-              index[0], index[-1], color="red")
-    ax.set_title(name)
+    alpha_bonferroni = alpha / len(index)
+    limits = stats.norm.ppf([alpha / 2, 1 - alpha / 2])
+    limits_bonferroni = stats.norm.ppf([alpha_bonferroni / 2, 1 - alpha_bonferroni / 2])
+
+    ax.scatter(index, normal_residuals)
+    ax.hlines(0, *index[[0, -1]], color="black")
+    ax.hlines(limits, *index[[0, -1]], color="green", label=f"{1-alpha:.0%} Interval")
+    ax.hlines(limits_bonferroni, *index[[0, -1]], color="red", label=f"{1-alpha:.0%} Interval - Bonferroni corrected")
+
     ax.set_xlabel("Date")
     ax.set_ylabel("z")
 
-    if save_path is not None:
-        fig.savefig(save_path / f'{name}_outlier')
-        plt.close(fig)
 
-    # qq-plot
-    fig, ax = plt.subplots(**fig_kwargs)
-    theo, obs = stats.probplot(normal_resids, dist=dist, fit=False)
-
+def plot_qq(normal_residuals, ax):
+    theo, obs = stats.probplot(normal_residuals, dist="norm", fit=False)
     ax.scatter(theo, obs)
-    ax.axline((0, 0), slope=1, color='black')
-    ax.set_title(name)
-    ax.set_xlabel("Theoretical quantile")
-    ax.set_ylabel("Observed quantile")
-
-    if save_path is not None:
-        fig.savefig(save_path / f'{name}_qq')
-        plt.close(fig)
-
-    # acf
-    fig, ax = plot_autocorrelation(normal_resids, name,
-                                   estimator="ACF",
-                                   alpha=alpha, nlags=nlags,
-                                   fig_kwargs=fig_kwargs,
-                                   save_path=save_path)
-
-    # pacf
-    fig, ax = plot_autocorrelation(normal_resids, name,
-                                   estimator="PACF",
-                                   alpha=alpha, nlags=nlags,
-                                   fig_kwargs=fig_kwargs,
-                                   save_path=save_path)
-    return
+    ax.axline((0, 0), slope=1, color="black")
+    ax.set_xlabel("Theoretical Quantile")
+    ax.set_ylabel("Observed Quantile")
 
 
-def multi_y_plot(X, Ys, ax=None,
-                 labels=None, ylims=None,
-                 offset=0.05, hide_original=True,
-                 color_cycler=None,
-                 label_pos="Legend"):
+def diagnostic_plots(normal_residuals, index, save_path=None, individual=False):
+
+    if save_path:
+        save_dir = save_path.parent
+        base_name = save_path.stem
+
+    uniform_residuals = stats.norm.cdf(normal_residuals)
+
+    plots = ("acf", "pacf", "uniform_histogram", "normal_histogram", "outliers", "qq")
+
+    if individual:
+        figs, axes = zip(*[plt.subplots() for _ in plots])
+
+    else:
+        fig, axes = plt.subplots(3, 2, figsize=(12, 12))
+        axes = axes.flatten()
+        figs = [fig]
+
+    plot_acf(normal_residuals, axes[0])
+    plot_pacf(normal_residuals, axes[1])
+    plot_uniform_histogram(uniform_residuals, axes[2])
+    plot_normal_histogram(normal_residuals, axes[3])
+    plot_outliers(normal_residuals, index, axes[4])
+    plot_qq(normal_residuals, axes[5])
+
+    if save_path:
+        if individual:
+            for plot, fig in zip(plots, figs):
+                fig.savefig(save_dir / (f"{base_name}_{plot}"))
+        else:
+            plt.savefig(save_dir / f"{base_name}")
+
+    return figs, axes
+
+
+def multi_y_plot(
+    X, Ys, ax=None, labels=None, ylims=None, offset=0.05, hide_original=True, color_cycler=None, label_pos="Legend"
+):
 
     if ax is None:
         fig, ax = plt.subplots()
@@ -148,14 +118,14 @@ def multi_y_plot(X, Ys, ax=None,
     if ylims is None:
         ylims = [None for _ in range(len(Ys))]
     if color_cycler is None:
-        color_cycler = plt.rcParams['axes.prop_cycle']()
+        color_cycler = plt.rcParams["axes.prop_cycle"]()
 
     if hide_original:
         ax.spines["left"].set_visible(False)
         ax.set_yticks([])
         ax.grid(False)
 
-    offsets = [-offset*x for x in range(len(Ys))]
+    offsets = [-offset * x for x in range(len(Ys))]
 
     lines = []
     for y, label, ylim, offset, color in zip(Ys, labels, ylims, offsets, color_cycler):
@@ -171,8 +141,8 @@ def multi_y_plot(X, Ys, ax=None,
         twin.spines["left"].set_position(("axes", offset))
         twin.spines["left"].set_color(color)
 
-        twin.yaxis.set_label_position('left')
-        twin.yaxis.set_ticks_position('left')
+        twin.yaxis.set_label_position("left")
+        twin.yaxis.set_ticks_position("left")
         twin.tick_params(axis="y", which="both", colors=color, labelrotation=90)
 
         twin.set_ylim(ylim)
@@ -190,8 +160,7 @@ def multi_y_plot(X, Ys, ax=None,
     return fig, ax
 
 
-def band_plot(x, y_mid, y1, y2=0, ax=None,
-              color=None, alpha=0.3, label=None, band_label=None):
+def band_plot(x, y_mid, y1, y2=0, ax=None, color=None, alpha=0.3, label=None, band_label=None):
     if ax is None:
         fig, ax = plt.subplots()
     else:
