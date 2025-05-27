@@ -1,288 +1,132 @@
 import pathlib
-import os
-os.chdir(pathlib.Path.cwd().parents[1].resolve())
+import tomllib
 
-import numpy as np
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
-
-
-import Code.evaluation as evaluation
-
+import nabqra.plotting as nplt
 from pandas import IndexSlice as idx
 
-
-#%% load data
-
-PATH = pathlib.Path()
+PATH = pathlib.Path.cwd().parents[1]
 load_path = PATH / "Data" / "Autocorrelation"
-figure_path = PATH / "Figures" / "Autocorrelation"
-table_path = PATH / "Tables" / "Autocorrelation"
+save_path = PATH / "Results" / "Autocorrelation"
 
-observations = pd.read_pickle(load_path / "observations.pkl")
-forecasts = pd.read_pickle(load_path / "forecasts.pkl")
-scores = pd.read_pickle(load_path / "scores.pkl")
-simulations = pd.read_pickle(load_path / "simulations.pkl")
+with open(PATH / "Settings" / "parameters.toml", "rb") as f:
+    parameters = tomllib.load(f)
+    zones = parameters["Zones"]
+    zone_limits = parameters["Zone-Limits"]
 
-zones = observations.columns.get_level_values(0).unique()
+scores = pd.read_pickle(load_path / "Forecast scores.pkl")
+preds = pd.read_pickle(load_path / "Forecast.pkl").astype(np.float64)
+resids_onestep = pd.read_pickle(load_path / "Residuals onestep.pkl").astype(np.float64)
+observations = pd.read_pickle(load_path / ".." / "Data" / "cleaned_observations.pkl")
+params = pd.read_pickle(load_path / "Model Params.pkl")
 
-burn_in = 240
-
-#%% forecasts in orignal space
+models = preds.index.unique(1)
 
 
-plots = [
-    {
-     "zone": "DK1-onshore",
-     "space": "original",
-     "xlims": (np.datetime64("2024-08-05"), np.datetime64("2024-08-14")),
-     "ylims": (-100, 3100)
-    },
-    {
-     "zone": "DK1-onshore",
-     "space": "cdf",
-     "xlims": (np.datetime64("2024-08-05"), np.datetime64("2024-08-14")),
-     "ylims": (0,1)
-    },
-    {
-     "zone": "DK1-onshore",
-     "space": "normal",
-     "xlims": (np.datetime64("2024-08-05"), np.datetime64("2024-08-14")),
-     "ylims": (-3,3)
-    },
-    {
-     "zone": "DK2-offshore",
-     "space": "original",
-     "xlims": (np.datetime64("2024-08-08"), np.datetime64("2024-08-18")),
-     "ylims": (-100, 1100)
-    }
-]
+# %% Example
+zone = "DK1-onshore"
+obs = observations.loc[zone]
+period = [np.datetime64("2023-10-17"), np.datetime64("2023-11-02")]
 
-def line_plots(zone, space, xlims, ylims, N_step = 24, save = True, Name = None, plot_variance = True):
-    # function for making this specific plot
-    # not general, just saves a lot of writing
-    x = forecasts.index
-    
-    fig, ax = plt.subplots(figsize = (14,8), layout = "tight")
-    sns.scatterplot(x = x, y = observations[zone, space], color = 'black', marker = 'x', ax = ax, label = "acutal")
-    
-    for color, model in zip(["crimson", "olivedrab", "navy"], ["SARMA", "ARMA", "nabqr"]):
-        sns.lineplot(x = x, y = forecasts[zone, model, space, "estimate"], color = color, ax = ax, label = model)
-        ax.fill_between(
-            x,
-            forecasts[zone, model, space, "lower prediction"],
-            forecasts[zone, model, space, "upper prediction"],
-            color = color,
-            alpha = 0.3
-        )
+fig, axes = plt.subplots(3, 1, figsize=(14, 9), sharex=True)
+axes = axes.ravel()
 
-    ax.vlines(
-        x[N_step-1::N_step],
-        ylims[0],
-        ylims[1],
-        color = 'black',
-        linestyle = '--'
+for model, ax in zip(models, axes):
+
+    df = preds.loc[idx[zone, model], "Original"]
+    nplt.band_plot(df.index, df["Estimate"], df["Lower"], df["Upper"], ax=ax, alpha=0.3)
+
+    ax.scatter(obs.index, obs, color="black", s=1)
+    ax.set_xlim(period)
+    ax.set_ylim([-10, 3800])
+    ax.set_title(model)
+
+fig.savefig(save_path / "Figures" / "model_example")
+
+# %% Sarma in 3 spaces
+
+zone = "DK1-onshore"
+obs = observations.loc[zone]
+period = [np.datetime64("2023-10-17"), np.datetime64("2023-11-02")]
+
+fig, axes = plt.subplots(3, 1, figsize=(14, 9), sharex=True)
+axes = axes.ravel()
+
+for space, ax in zip(["Original", "CDF", "Normal"], axes):
+
+    df = preds.loc[idx[zone, model]]
+    nplt.band_plot(df.index, df[space, "Estimate"], df[space, "Lower"], df[space, "Upper"], ax=ax, alpha=0.3)
+
+    ax.scatter(df.index, df[space, "Observation"], color="black", s=1)
+    ax.set_xlim(period)
+    ax.set_title(space)
+
+fig.savefig(save_path / "Figures" / "space_example")
+
+# %% Residual
+
+for zone, df in resids_onestep.groupby("Zone"):
+    print(zone)
+    figs, _ = nplt.diagnostic_plots(
+        df.values.squeeze() / df.std().values,
+        df.index.get_level_values(1),
+        save_path=save_path / "Figures" / "Residuals" / f"{zone}",
     )
-    ax.set_title(zone)
-    ax.legend(loc = "upper right")
-    ax.set_ylabel("Production")
-    ax.set_xlabel("Date")
-    ax.set_xlim(xlims)
-    ax.set_ylim(ylims)
-    if save:
-        if Name is None:  Name = ("-".join([zone, space, "forecast"]))
-        fig.savefig( (figure_path / Name).with_suffix(".png") )
-        
-    return fig, ax
+    figs[0].suptitle(f"{zone}")
 
 
-for kwargs in plots:
-    line_plots(**kwargs)
+# %% param tabel
+tmp = params.loc[idx[:, ["coef", "std err"]], :]
+tmp = params.groupby("Zone").apply(lambda x: x.T.astype(str).apply(lambda x: "$" + "\pm".join(x) + "$", 1)).T
+tmp = tmp.set_index(pd.Index(["$AR_1$", "$MA_1$", "$SAR_{1,24}$", "$SAM_{1,24}$", "$\sigma^2$"]))
+tmp.style.to_latex(
+    save_path / "Tables" / "Params.tex",
+    hrules=True,
+    clines="skip-last;data",
+    convert_css=True,
+    position="h",
+    position_float="centering",
+    multicol_align="r",
+    multirow_align="r",
+    caption=(
+        "Parameters for the sarma model in normal space in all zones there is a strong autocorrelation at lag 1. "
+        "There is also a strong seasonal component in all zone except DK2-offshore",
+        "Paraeters for the SARMA model ",
+    ),
+)
 
-#%% interval plots
+# %% Result table
 
-plots = [
-    {
-     "zone": "DK1-onshore",
-     "space": "original",
-     "xlims": (np.datetime64("2024-08-05"), np.datetime64("2024-08-14")),
-     "ylims": (-1200, 1800)
-    },
-    {
-     "zone": "DK1-onshore",
-     "space": "cdf",
-     "xlims": (np.datetime64("2024-08-05"), np.datetime64("2024-08-14")),
-     "ylims": (-1,1)
-    },
-    {
-     "zone": "DK1-onshore",
-     "space": "normal",
-     "xlims": (np.datetime64("2024-08-05"), np.datetime64("2024-08-14")),
-     "ylims": (-3,3)
-    },
-]
+avg_score = pd.concat([np.exp(np.log(scores).groupby(level=1).mean())], keys=["Geometric mean score"])
+scores = pd.concat([scores, avg_score])
 
-def var_plots(zone, space, xlims, ylims, N_step = 24, save = True, Name = None):
-    # function for making this specific plot
-    # not general, just saves a lot of writing
-    x = forecasts.index
-    y = forecasts.xs(space, level = 2, axis = 1)[zone]
-    
-    fig, ax = plt.subplots(figsize = (14,8), layout = "tight")
-    
-    
-    for color, model in zip(["crimson", "olivedrab", "navy"], ["SARMA", "ARMA", "nabqr"]):
-    
-        #sns.scatterplot(x = x, y = df_resids[zone, space] - y[model,"estimate"], color = color, marker = 'x', ax = ax)
-        sns.lineplot( x = x, y = y[model, "lower prediction"] - y[model,"estimate"], color = color, linestyle = "--", ax = ax, label = model)
-        sns.lineplot( x = x, y = y[model, "upper prediction"] - y[model,"estimate"], color = color, linestyle = "--", ax = ax)
-    
-    ax.vlines(
-        x[N_step-1::N_step],
-        ylims[0],
-        ylims[1],
-        color = 'black',
-        linestyle = '--'
+min_score = scores.groupby(level=0).transform("min")
+gmap = np.log(scores / min_score)
+min_format = np.where(scores == min_score, "font-weight: bold; font-style: italic", "")
+min_format = pd.DataFrame(min_format, index=scores.index, columns=scores.columns)
+
+(
+    scores.style.format(precision=2)
+    .background_gradient(cmap="Reds", vmin=0, vmax=np.log(2), axis=None, gmap=gmap)
+    .apply(
+        lambda x: min_format,
+        axis=None,
     )
-    ax.axline((0,0), slope = 0, color = "black")
-    ax.set_title(zone)
-    ax.legend(loc = "upper right")
-    ax.set_ylabel("Production interval")
-    ax.set_xlabel("Date")
-    ax.set_xlim(xlims)
-    ax.set_ylim(ylims)
-    
-    if save:
-        if Name is None:  Name = ("-".join([zone, space, "interval"]))
-        fig.savefig( (PATH / "Figures" / "Autocorrelation" / Name).with_suffix(".png") )
-        
-    return fig, ax
-
-for kwargs in plots:
-    var_plots(**kwargs)
-
-
-#%% actual by predicted
-"""
-def abp_plot(zone, space, xlim, ylim, save = True, Name = None):
-    # function for making this specific plot
-    # not general, just saves a lot of writing
-
-    fig, ax = plt.subplots(figsize = (14,8), layout = "tight")
-    
-    sns.scatterplot(
-        x = df_forecast[zone, "SARMA", space, "estimate"],
-        y = df_resids[zone, space],
-        color = 'crimson',
-        ax = ax
+    .to_latex(
+        save_path / "Tables" / "Scores.tex",
+        hrules=True,
+        clines="skip-last;data",
+        convert_css=True,
+        position="h",
+        position_float="centering",
+        multicol_align="r",
+        multirow_align="r",
+        caption=(
+            "Scores for the original ensembles, NN-model, and NN-model with SARMA. "
+            "The SARMA corrected model performs much better than the other models on all scores. ",
+            "Scores for the autocorrelation models.",
+        ),
     )
-    sns.scatterplot(
-        x = df_forecast[zone, "ARMA", space, "estimate"],
-        y = df_resids[zone, space],
-        color = 'olivedrab',
-        ax = ax
-    )
-    sns.scatterplot(
-        x = df_forecast[zone, "nabqr", space, "estimate"],
-        y = df_resids[zone, space],
-        color = 'navy',
-        ax = ax
-    )
-    ax.axline((0,0), slope = 1, color = 'black')
-    ax.set_title(zone)
-    ax.set_ylabel("Actual")
-    ax.set_xlabel("Predicted")
-    ax.set_xlim(xlim)
-    ax.set_ylim(ylim)
-    ax.legend(["SARMA", "ARMA", "NABQR"])
-
-    if save:
-        if Name is None:  Name = ("-".join([zone, space, "actual_predicted"]))
-        fig.savefig( (PATH / "Figures" / "Correlation Structure" / Name).with_suffix(".png") )
-        
-    return fig, ax
-
-
-xlims = [
-    (-10,1400),
-    (-40,3700),
-    (-10,1100),
-    (-55,550)
-]
-
-ylims = [
-    (-10,1200),
-    (-10,3400),
-    (-10,1000),
-    (-10,580)
-]
-for zone, xlim, ylim in zip(zones, xlims, ylims):
-    abp_plot(zone, "original", xlim, ylim)
-    abp_plot(zone, "cdf", (0,1), (0,1))
-    abp_plot(zone, "normal", (-3,3), (-3,3))
-    
-"""
-#%% scores 
-tmp = scores.T.reset_index(names = ["zone", "metric"]).melt(value_vars = ["nabqr", "SARMA", "ARMA"],
-                                                               var_name = "model",
-                                                               value_name ="score",
-                                                               id_vars = ["zone","metric"])
-fig = sns.catplot(tmp,
-                x = "model", y = "score", hue = "model",
-                row = "metric", col = "zone", kind = "bar",
-                palette = {"nabqr": "navy", "SARMA":"crimson", "ARMA":"olivedrab"},
-                height = 3, aspect = 1.2,
-                sharey = False, sharex=False,
-                margin_titles = True,
-                dodge = False)
-fig.tight_layout()
-
-fig.savefig( (PATH / "Figures" / "Correlation Structure" / "scores.png" ))
-
-scores.T.style\
-    .format(precision = 2)\
-    .highlight_min(axis = 1, props = "font-weight:bold")\
-    .to_latex(table_path / "scores.tex",
-              caption = "Model scores for each zone",
-              label = "fig:forecasteval:scores",
-              hrules = True,
-              clines = "skip-last;data",
-              position = "h",
-              position_float = "centering",
-              convert_css = True)
-
-
-#%% variogram
-
-fig, axes = plt.subplots(len(zones), len(scores.index),
-                         figsize = (12,14), layout = "constrained",
-                         sharex = True, sharey = True)
-
-c_range = []
-for i, zone in enumerate(zones):
-    for j, p in enumerate(scores.index):
-        
-        actuals = observations[zone,"original"].values.squeeze()[burn_in:]
-        sim = simulations.loc[:, idx[zone, p, "original", :]].values[burn_in:]
-        
-        score, variogram = evaluation.variogram_score(sim, actuals)
-        #variogram = np.log(variogram)
-        np.fill_diagonal(variogram, 0)
-        
-        if p == "nabqr": c_range.append((variogram.min(),variogram.max()))
-        
-        
-        cbar = False
-        if j == len(scores.index)-1: cbar = True
-        sns.heatmap(variogram,
-                    ax = axes[i,j],
-                    vmin = c_range[i][0], vmax = c_range[i][1],
-                    xticklabels = 1, yticklabels = 1,
-                    cmap = "viridis",
-                    cbar = cbar)
-        
-        if i == 0: axes[i,j].set_title(p)
-        if j == 0: axes[i,j].set_ylabel(zone)
-
-fig.savefig( figure_path / "variograms.png" )
+)

@@ -8,13 +8,12 @@ from tqdm import tqdm
 
 class model:
 
-    def __init__(self, n_sim=10, horizon=24, alpha=0.02, sided=2, burnin=240):
+    def __init__(self, n_sim=10, horizon=24, alpha=0.02, sided=2):
 
         self.n_sim = n_sim
         self.horizon = horizon
         self.alpha = alpha
         self.sided = 2  # not really used right now
-        self.burnin = burnin
 
         return
 
@@ -105,6 +104,9 @@ class sarma(model):
         interval = forecast.conf_int(self.alpha)
 
         return np.concatenate((mu[:, np.newaxis], interval), axis=1)
+
+    def get_params(self):
+        return self.modelres.summary()
 
 
 class dummy(model):

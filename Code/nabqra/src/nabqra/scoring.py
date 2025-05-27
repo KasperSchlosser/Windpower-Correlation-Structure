@@ -61,6 +61,7 @@ def variogram_score(simulations, actuals, p=0.5, window=24, offset=24, weight=No
             Adiff = np.abs(Adiff) ** p
 
             scores = np.abs(Adiff - Ediff) ** (1 / p)
+            print(Adiff, Ediff)
 
             variogram += np.diagflat(scores, lag)
             variogram += np.diagflat(scores, -lag)

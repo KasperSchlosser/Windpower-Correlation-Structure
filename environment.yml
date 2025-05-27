@@ -30,6 +30,8 @@ dependencies:
  - r
  - r-quantreg
  - r-readr
+ - catboost>=1.2.8
+ - u8darts-all
  - miktex
  - pip
  - pip:

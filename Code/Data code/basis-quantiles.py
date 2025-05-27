@@ -36,15 +36,14 @@ nabqr_features.loc[idx[:, :], "const"] = 1
 quantile_res = pd.read_pickle(load_path / "NN quantiles.pkl")
 
 rng = np.random.default_rng(42)
-n_sim = 10
+n_sim = 250
 
 # %% comparison between using quantiles and reduced basis
-
 
 reg_res = pd.DataFrame(
     columns=["0.01", "0.50", "0.60"],
     index=pd.MultiIndex.from_product(
-        (zones, ("Quantile Basis", "Simple Basis"), index), names=["Zone", "Basis", "Time"]
+        (zones, ("Quantile Basis", "Small Basis"), index), names=["Zone", "Basis", "Time"]
     ),
     dtype=np.float64,
 )
@@ -57,7 +56,7 @@ for zone in zones:
         model_small = sm.QuantReg(obs.loc[zone, train_index], features.loc[(zone, train_index), :]).fit(float(q))
         model_big = sm.QuantReg(obs.loc[zone, train_index], nabqr_features.loc[(zone, train_index), :]).fit(float(q))
 
-        reg_res.loc[idx[zone, "Simple Basis", :], q] = model_small.predict(features.loc[zone]).values
+        reg_res.loc[idx[zone, "Small Basis", :], q] = model_small.predict(features.loc[zone]).values
         reg_res.loc[idx[zone, "Quantile Basis", :], q] = model_big.predict(nabqr_features.loc[zone]).values
 
 reg_res = reg_res.join(obs, on=["Zone", "Time"])
@@ -106,7 +105,7 @@ for zone in zones:
         len(obs.loc[zone].iloc[-10000:]),
         init,
     )
-    taqr_quant.loc[idx[zone, index[-10000:]], :] = np.stack(tmp[0], axis=1)
+    taqr_quant.loc[idx[zone, index[-10000 + 502 :]], :] = np.stack(tmp[0], axis=1)
 
 taqr_quant = pd.concat([taqr_quant], keys=["NABQR - TAQR"], names=["Model"]).swaplevel(0, 1)
 quantile_res = pd.concat((quantile_res, taqr_quant)).sort_index()
