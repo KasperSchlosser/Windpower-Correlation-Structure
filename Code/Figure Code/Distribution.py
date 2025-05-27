@@ -84,31 +84,30 @@ for dist in dists:
 
 # %% score table
 
-score_df.style\
-    .format(precision=2)\
-    .highlight_min(axis=1, props="font-weight:bold;")\
-    .to_latex(save_path / "Tables" / "scores.tex",
-              hrules=True,
-              clines="skip-last;index",
-              convert_css=True,
-              position="h",
-              position_float="centering",
-              multicol_align="r",
-              multirow_align="r",
-              column_format="ccccc",
-              caption=(
-                  'The wasserstein distance (for $p = 1$ and $p = 2$) '
-                  'along with KL-divergence for the 3 models. '
-                  'Each model evaulated for each of the 4 example distributions '
-                  'Except for the Beta distribution the spline model always has the lowest score.',
-                  "Quantile model scores for the example distributions"))
+score_df.style.format(precision=2).highlight_min(axis=1, props="font-weight:bold;").to_latex(
+    save_path / "Tables" / "scores.tex",
+    hrules=True,
+    clines="skip-last;index",
+    convert_css=True,
+    position="h",
+    position_float="centering",
+    multicol_align="r",
+    multirow_align="r",
+    column_format="ccccc",
+    caption=(
+        "The wasserstein distance (for $p = 1$ and $p = 2$) "
+        "along with KL-divergence for the 3 models. "
+        "Each model evaulated for each of the 4 example distributions "
+        "Except for the Beta distribution the spline model always has the lowest score.",
+        "Quantile model scores for the example distributions",
+    ),
+)
 
 
 # %% tail
 
 
-fig, ax = nabqra.plotting.band_plot(np.arange(len(tail_df)),
-                                    *tail_df["True"].values.T, band_label="True estimates")
+fig, ax = nabqra.plotting.band_plot(np.arange(len(tail_df)), *tail_df["True"].values.T, band_label="True estimates")
 
 for name in list(models)[1:]:
     l = ax.plot(tail_df[name, "Mean"], label=name)
@@ -122,8 +121,7 @@ fig.savefig(save_path / "Figures" / "Tail Problem")
 
 # %% transformed plots
 
-small_lim = [np.datetime64("2024-02-01"),
-             np.datetime64("2024-02-15")]
+small_lim = [np.datetime64("2024-02-01"), np.datetime64("2024-02-15")]
 
 fig, axes = plt.subplots(2, 2, sharex=True)
 axes = axes.ravel()
@@ -132,24 +130,19 @@ axes = axes.ravel()
 for ax, zone in zip(axes, zones):
 
     twin = ax.twinx()
-    twin.plot(actuals.index, actuals[zone].values,
-              color="black", linewidth=0.5,
-              label="Observed")
+    twin.plot(actuals.index, actuals[zone].values, color="black", linewidth=0.5, label="Observed")
     twin.set_ylabel("Production (kW)", rotation=-90)
     twin.grid(False)
 
-    ax.plot(time_index, lstm_data[zone, "CDF"],
-            label="LSTM", linewidth=1)
-    ax.plot(time_index, taqr_data[zone, "CDF"],
-            label="TAQR", linewidth=1)
-    ax.plot(time_index, beta_data[zone, "CDF"],
-            label="Beta", linewidth=1)
+    ax.plot(time_index, lstm_data[zone, "CDF"], label="LSTM", linewidth=1)
+    ax.plot(time_index, taqr_data[zone, "CDF"], label="TAQR", linewidth=1)
+    ax.plot(time_index, beta_data[zone, "CDF"], label="Beta", linewidth=1)
     ax.legend()
     ax.set_title(zone)
 fig.supxlabel("Date")
 fig.supylabel("CDF-residual")
-axes[2].tick_params(axis='x', rotation=15)
-axes[3].tick_params(axis='x', rotation=15)
+axes[2].tick_params(axis="x", rotation=15)
+axes[3].tick_params(axis="x", rotation=15)
 
 fig.savefig(save_path / "Figures" / "CDF Residual_full")
 
@@ -163,20 +156,17 @@ axes = axes.ravel()
 
 for ax, zone in zip(axes, zones):
 
-    ax.plot(time_index, lstm_data[zone, "Normal"],
-            label="LSTM", linewidth=1)
-    ax.plot(time_index, taqr_data[zone, "Normal"],
-            label="TAQR", linewidth=1)
-    ax.plot(time_index, beta_data[zone, "Normal"],
-            label="Beta", linewidth=1)
+    ax.plot(time_index, lstm_data[zone, "Normal"], label="LSTM", linewidth=1)
+    ax.plot(time_index, taqr_data[zone, "Normal"], label="TAQR", linewidth=1)
+    ax.plot(time_index, beta_data[zone, "Normal"], label="Beta", linewidth=1)
     ax.set_title(zone)
     ax.set_ylim([-3, 3])
 
     ax.legend()
 fig.supxlabel("Date")
 fig.supylabel("Normal-residual")
-axes[2].tick_params(axis='x', rotation=15)
-axes[3].tick_params(axis='x', rotation=15)
+axes[2].tick_params(axis="x", rotation=15)
+axes[3].tick_params(axis="x", rotation=15)
 
 
 fig.savefig(save_path / "Figures" / "Normal Residual_full")
@@ -187,16 +177,18 @@ fig.savefig(save_path / "Figures" / "Normal Residual_small")
 
 # %%%
 print("lstm")
-print(np.sqrt((lstm_data.xs("Normal", level=1, axis=1)**2).mean()))
+print(np.sqrt((lstm_data.xs("Normal", level=1, axis=1) ** 2).mean()))
 print("taqr")
-print(np.sqrt((taqr_data.xs("Normal", level=1, axis=1)**2).mean()))
+print(np.sqrt((taqr_data.xs("Normal", level=1, axis=1) ** 2).mean()))
 print("beta")
 # print(np.sqrt((beta_data.xs("Normal", level = 1, axis = 1)**2).mean()))
 
 # %% residual plots
 
 for zone in zones:
-    nabqra.plotting.pseudoresid_diagnostics(taqr_data[zone, "Normal"], zone + " TAQR",
-                                            save_path=save_path / "Figures" / "Residuals" / "taqr")
-    nabqra.plotting.pseudoresid_diagnostics(lstm_data[zone, "Normal"], zone + " LSTM",
-                                            save_path=save_path / "Figures" / "Residuals" / "lstm")
+    nabqra.plotting.pseudoresid_diagnostics(
+        taqr_data[zone, "Normal"], zone + " TAQR", save_path=save_path / "Figures" / "Residuals" / "taqr"
+    )
+    nabqra.plotting.pseudoresid_diagnostics(
+        lstm_data[zone, "Normal"], zone + " LSTM", save_path=save_path / "Figures" / "Residuals" / "lstm"
+    )

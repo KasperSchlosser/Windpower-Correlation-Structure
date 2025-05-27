@@ -22,11 +22,9 @@ def trans(x, zone):
     f = zone_limits[zone]
     return x / f[1]
 
-
 def detrans(x):
     f = zone_limits[zone]
     return f[1]*x
-
 
 quantiles = np.concat([[0.01], np.arange(0.05, 1, 0.05), [0.99]])
 

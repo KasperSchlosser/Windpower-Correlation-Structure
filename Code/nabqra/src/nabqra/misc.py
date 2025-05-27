@@ -5,7 +5,6 @@ import torch
 
 from pandas import IndexSlice as idx
 
-
 def fix_quantiles(quantiles: pd.DataFrame, min_val: float, max_val: float) -> pd.DataFrame:
     """
     Adjusts the quantile values within a DataFrame to ensure they fall within specified limits,

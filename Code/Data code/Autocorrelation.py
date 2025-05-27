@@ -31,7 +31,6 @@ test_index = index[parameters["train_size"] :]
 
 global_params = {"n_sim": 250, "horizon": 24, "alpha": 0.1, "sided": 2}
 
-
 # maybe ARMA need to just be made separately
 # "ARMA": {
 #     "basis": "actuals",
@@ -97,6 +96,7 @@ for zone, model in scores.index.unique():
     )
 
     if hasattr(pipeline.correlation_model, "get_params"):
+
         # get params and onestep
         model_params[zone] = params_to_pd(pipeline.correlation_model.get_params())
 
@@ -106,8 +106,6 @@ for zone, model in scores.index.unique():
 
 
 model_params = pd.concat(model_params, names=["Zone"])
-# model_params = model_params[["coef", "std err"]]
-# model_params.columns = ["Estimated Value", "Standard Error"]
 model_params = model_params.stack().unstack(level=1)
 
 
@@ -118,8 +116,8 @@ forecast_res.to_csv(save_path / "Forecast.csv")
 resid_onestep.to_pickle(save_path / "Residuals onestep.pkl")
 resid_onestep.to_csv(save_path / "Residuals onestep.csv")
 
-# scores.to_pickle(save_path / "Forecast scores.pkl")
-# scores.to_csv(save_path / "Forecast scores.csv")
+scores.to_pickle(save_path / "Forecast scores.pkl")
+scores.to_csv(save_path / "Forecast scores.csv")
 
 model_params.to_pickle(save_path / "Model Params.pkl")
 model_params.to_csv(save_path / "Model Params.csv")

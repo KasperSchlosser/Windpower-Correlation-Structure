@@ -105,7 +105,6 @@ history = {z: {} for z in zones}
 predictions = {z: {} for z in zones}
 features = pd.DataFrame(index=ensembles.index, columns=[f"Feature {x+1}" for x in range(5)], dtype=np.float64)
 
-
 for zone, vals in product(zones, models):
 
     name = vals["name"]

@@ -5,7 +5,6 @@ import scipy.stats as stats
 
 from tqdm import tqdm
 
-
 class model:
 
     def __init__(self, n_sim=10, horizon=24, alpha=0.02, sided=2):

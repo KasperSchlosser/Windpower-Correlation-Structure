@@ -24,7 +24,6 @@ params = pd.read_pickle(load_path / "Model Params.pkl")
 
 models = preds.index.unique(1)
 
-
 # %% Example
 zone = "DK1-onshore"
 obs = observations.loc[zone]

@@ -4,7 +4,6 @@ import numpy.linalg as la
 import time
 import scipy
 
-
 def run_taqr(corrected_ensembles, actuals, quantiles, n_init, n_full, n_in_X):
     """Wrapper function to run TAQR on corrected ensembles.
 
