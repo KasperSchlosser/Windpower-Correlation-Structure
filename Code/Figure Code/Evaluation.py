@@ -13,13 +13,13 @@ import nabqra
 
 
 PATH = pathlib.Path.cwd().parents[1]
-load_path = PATH / "Data"
+load_path = PATH / "Data" / "Evaluation"
 save_path = PATH / "Results" / "Evaluation"
 
 with open(PATH / "Settings" / "parameters.toml", "rb") as f:
     parameters = tomllib.load(f)
 
-rng = np.random.default_rng(360)
+rng = np.random.default_rng(42)
 
 plt.close("all")
 
@@ -59,7 +59,7 @@ plt.close(fig)
 
 fig, ax = plt.subplots()
 
-wasser_table = pd.DataFrame(index=["W_p^p", "W_p"])
+wasser_table = pd.DataFrame(index=["$W_p^p$", "$W_p$"])
 Q = np.linspace(1e-8, 1 - 1e-8, num=1000)
 
 for p in [0.1, 0.5, 1, 2]:
@@ -68,7 +68,7 @@ for p in [0.1, 0.5, 1, 2]:
     score = nabqra.scoring.continous_wasserstein(dist1.ppf, dist2.ppf, order=p, lims=[1e-8, 1 - 1e-8], limit=200)[0]
     wasser_table[f"{p:.1f}"] = score**p, score
 
-    nabqra.plotting.band_plot(Q, d, d, label=f"$ p = {p} $", ax=ax)
+    nabqra.plotting.band_plot(Q, d, d, band_label=f"$ p = {p} $", ax=ax)
 
 
 ax.set_xlabel("q")
@@ -83,9 +83,10 @@ plt.close(fig)
 wasser_table.style.to_latex(
     save_path / "Tables" / "Wasserstein.tex",
     position="h",
+    position_float="centering",
     label="evaluation:table:wasserstein",
     caption=(
-        "Wasserstein distance for different orders. largers order Emphasise larger deviations",
+        "Wasserstein distance for different orders. Largers orders Emphasize larger deviations",
         "Wasserstein distance for different orders",
     ),
     hrules=True,
@@ -137,6 +138,7 @@ kl_table = pd.DataFrame(np.atleast_2d(scores), index=["Divergence"], columns=["$
 kl_table.style.to_latex(
     save_path / "Tables" / "Kullback-Leibler.tex",
     position="h",
+    position_float="centering",
     label=r"evaluation:table:kullback-leibler",
     caption=(
         "Kullback-Leibler divergence between the distributions"
@@ -150,17 +152,17 @@ kl_table.style.to_latex(
 # %% MAE
 
 X = np.linspace(-3, 3, num=1000)
+X2 = np.array([1, 10, 20])
 
-X2 = [1, 5, 10, 50]
-Ys = [np.abs(X) + x2 for x2 in [1, 5, 10, 50]]
-labels = [f"$x_2 = {x2}$" for x2 in X2]
-ylims = [(0, X[-1] + x2) for x2 in X2]
+Ys = np.add.outer(np.abs(X), X2) / 2
 
-fig, ax = nabqra.plotting.multi_y_plot(X, Ys, labels=labels, ylims=ylims, offset=0.03)
+fig, ax = plt.subplots()
 
-ax.get_legend().set(loc="lower right")
-ax.set_title("MAE")
-ax.set_xlabel("$x1$")
+ax.plot(X, Ys)
+
+ax.legend([f"$x_2 = {x2}$" for x2 in X2])
+ax.set_xlabel("$x_1$")
+ax.set_ylabel("MAE")
 
 fig.savefig(save_path / "Figures" / "MAE")
 plt.close(fig)
@@ -168,21 +170,46 @@ plt.close(fig)
 # %% RMSE
 
 X = np.linspace(-3, 3, num=1000)
-X2 = np.logspace(-1, 2, 4)
+X2 = np.array([1, 10, 100])
 
-Ys = [np.sqrt((X**2 + x2**2) / 2) for x2 in X2]
+Ys = np.sqrt(np.add.outer(X**2, X2**2) / 2)
+Y_max = Ys.max(axis=0)
+
 labels = [f"$x_2 = {x2}$" for x2 in X2]
 
-dy = Ys[0][-1]
-ylims = [(y[-1] - dy, y[-1] + dy * 0.1) for y in Ys]
+fig, ax = nabqra.plotting.multi_y_plot(X, Ys.T, labels=labels, ylims=list(zip(Y_max - 1.8, Y_max)))
 
-fig, ax = nabqra.plotting.multi_y_plot(X, Ys, labels=labels, ylims=ylims, offset=0.03)
-
-ax.get_legend().set(loc="lower right")
+ax.get_legend().set(loc="lower left")
+ax.set_xlabel("$x_1$")
 ax.set_title("RMSE")
-ax.set_xlabel("$x1$")
 
 fig.savefig(save_path / "Figures" / "RMSE")
+plt.close(fig)
+
+# %% QS
+
+
+def quantile_loss(q, y, f):
+    e = y - f
+    return np.maximum(q * e, (q - 1) * e)
+
+
+quantiles = [0.001, 0.5, 0.95]
+
+X = np.linspace(-4, 4, num=1000)
+Y = np.zeros((len(quantiles), len(X)))
+
+fig, ax = plt.subplots()
+
+for q in quantiles:
+    loss = quantile_loss(q, X, stats.norm.ppf(q))
+    l = ax.plot(X, loss, label=f"q = {q}")
+
+ax.set_xlabel("$x$")
+ax.set_ylabel("$Quantile Loss$")
+ax.legend()
+
+fig.savefig(save_path / "Figures" / "QS")
 plt.close(fig)
 
 
@@ -191,17 +218,17 @@ plt.close(fig)
 dist = stats.norm()
 example_point = -0.5
 X = np.linspace(-3, 3, 1000)
-sigmas = [0.01, 0.1, 1, 10]
+sigmas = [0.1, 1, 10]
 Ys = np.array([ps.crps_gaussian(X, 0, sigma) for sigma in sigmas]).T
 
 
 fig, ax = plt.subplots()
 
-
-ax.plot(X, np.heaviside(X - example_point, 1), label='"Observed" Distribution')
-ax.fill_between(X, dist.cdf(X), np.heaviside(X - example_point, 1), alpha=0.3, label=r"CRPS")
 ax.plot(X, dist.cdf(X), color="black", label=r"True distribution")
+ax.plot(X, np.heaviside(X - example_point, 1), label="Observed Distribution")
 ax.vlines(example_point, 0, 1, color="black", linestyle="--", label=r"Observed x")
+ax.fill_between(X, dist.cdf(X), np.heaviside(X - example_point, 1), alpha=0.3)
+
 ax.set_xlabel("$x$")
 ax.set_ylabel("$F(x)$")
 ax.legend()
@@ -221,108 +248,86 @@ plt.close(fig)
 
 # %% Vars
 
-N = 10000
-T = 15
-N_steps = 100
+theoretical = pd.read_pickle(load_path / "Theoretical.pkl")
+samples = pd.read_pickle(load_path / "Samples.pkl")
 
-ar1 = 0.75 ** (1 / N_steps)
-sigma = 1 / N_steps
-poffset = 1
-alpha = 0.1
 
-model = sm.tsa.ARIMA([0, 0], order=(1, 0, 0), trend="n")
-
-samples = model.simulate([ar1, sigma], T * N_steps, repetitions=N, initial_state=-poffset, random_state=rng).squeeze()
-samples = samples + poffset
-
-X = np.linspace(0, T, num=T * N_steps)
-
-expected = np.zeros_like(X)
-expected[0] = -poffset
-var = np.zeros_like(X)
-for i in range(1, len(X)):
-    expected[i] = ar1 * expected[i - 1]
-    var[i] = ar1**2 * var[i - 1] + sigma
-expected = expected + poffset
-process_interval = stats.norm().ppf(1 - alpha / 2) * np.sqrt(var)
-
-# process plot
 fig, ax = nabqra.plotting.band_plot(
-    X,
-    expected,
-    expected - process_interval,
-    expected + process_interval,
+    theoretical.index,
+    theoretical["Expected"],
+    theoretical["Lower"],
+    theoretical["Upper"],
     label=r"$E(x_t)$",
-    band_label=f"${(1-alpha)*100:.0f}\%$ interval",
+    band_label="90% interval",
 )
-ax.plot(X, samples[:, :12], color=ax.get_lines()[0].get_color(), alpha=0.4)
-
-plt.legend()
+ax.plot(samples.index, samples.values[:, :12], color=ax.get_lines()[0].get_color(), alpha=0.4)
 ax.set_xlabel("$t$")
-
-fig.savefig(save_path / "Figures" / "Example Process")
+ax.set_ylabel("$x_t$")
+plt.legend()
+fig.savefig(save_path / "Figures" / "Process example")
 plt.close(fig)
 
-fig, ax = plt.subplots()
+# %% vars
 
-diffs = samples - samples[0, :]
-abs_diffs = np.abs(diffs) ** 0.5
+diffs = samples - samples.iloc[0, :]
+abs_diffs = np.abs(diffs)
+X = samples.index
 
-ax.plot(X, expected, color="black", label="$E(x_t - x_0)$")
-ax.plot(X, np.mean(abs_diffs, axis=1), label="$E(|x_t - x_0|^{0.5})$")
-nabqra.plotting.band_plot(
-    X,
-    *np.quantile(abs_diffs, [0.5, alpha / 2, 1 - alpha / 2], axis=1),
-    label="$Q_{0.5}(|x_t - x_0|^0.5)$",
-    band_label=f"${(1-alpha)*100:.0f}\%$ interval",
-    ax=ax,
-)
+fig, ax = nabqra.plotting.band_plot(X, theoretical["Expected"], theoretical["Upper"], label="$E(x_t - x_0)$")
+
+for p in [0.5, 1, 2]:
+    ax.plot(X, np.mean(abs_diffs**p, axis=1), label=f"$E(|x_t - x_0|^{{{p}}})$")
 
 ax.set_xlabel("$t$")
 ax.legend()
-
-fig.savefig(save_path / "Figures" / "VARS expected")
+fig.savefig(save_path / "Figures" / "VarS diff")
 plt.close(fig)
 
-diffs_df = pd.DataFrame(diffs[-1, :], columns=["observation"])
-abs_diffs_df = pd.DataFrame(abs_diffs[-1, :], columns=["observation"])
-diffs_df["Distribution"] = r"$x_t - x_0$"
-abs_diffs_df["Distribution"] = r"$ | x_t - x_0 |^{0.5}$"
+
+# %% vars
+
+tmp_df = pd.DataFrame({f"p={p}": abs_diffs.iloc[-1, :] ** p for p in [0.5, 1, 2]}).melt(
+    var_name="Order", value_name="x"
+)
 
 fig, ax = plt.subplots()
-sns.histplot(
-    pd.concat((diffs_df, abs_diffs_df), ignore_index=True),
-    x="observation",
-    hue="Distribution",
-    kde=True,
-    stat="density",
+sns.kdeplot(
+    tmp_df,
+    x="x",
+    hue="Order",
+    cut=0,
+    fill=True,
     multiple="layer",
     ax=ax,
 )
-
-ax.set_xlabel("x")
+ax.set_xlabel("$|x_t - x_0|^{{{p}}}$")
 ax.set_ylabel("p(x)")
-fig.savefig(save_path / "Figures" / "VARS Distribution")
+ax.set_xlim([0, 10])
+fig.savefig(save_path / "Figures" / "VarS Distribution")
 plt.close(fig)
+
 
 # %% Expected score as a function of variance
 
 sigmas = np.logspace(-2, 2, 100)
 N = 10000
 K = 10
-z = stats.norm(scale=sigmas).rvs((K, N, len(sigmas)))
+z = stats.norm(scale=sigmas).rvs((K, N, len(sigmas)), random_state=rng)
 
 mae = np.mean(np.abs(z), axis=0)
 rmse = np.sqrt(np.mean(z**2, axis=0))
-Vars = np.mean(np.abs(np.abs(z) ** 0.5 - np.mean(np.abs(z) ** 0.5, axis=(0, 1))) ** 0.5, axis=0)
 crps = np.mean([ps.crps_gaussian(z[:, :, i], 0, s) for i, s in enumerate(sigmas)], axis=1).T
+
+VarS_mean = np.mean(np.abs(z) ** 0.5, axis=(0, 1))
+VarS = np.mean(np.abs(np.abs(z) ** 0.5 - VarS_mean) ** (1 / 0.5), axis=0)
 
 fig, ax = plt.subplots()
 
 ax.plot(sigmas, np.mean(mae, axis=0))
 ax.plot(sigmas, np.mean(rmse, axis=0))
 ax.plot(sigmas, np.mean(crps, axis=0))
-ax.plot(sigmas, np.mean(Vars, axis=0))
+ax.plot(sigmas, np.mean(VarS, axis=0))
+
 plt.legend(["MAE", "RMSE", "CRPS", "Vars"])
 ax.set_yscale("log")
 ax.set_xscale("log")
