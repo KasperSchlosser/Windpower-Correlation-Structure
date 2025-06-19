@@ -4,8 +4,6 @@ import numpy as np
 import tomllib
 import matplotlib.pyplot as plt
 
-import nabqra
-
 from pandas import IndexSlice as idx
 
 
@@ -31,39 +29,49 @@ for zone in parameters["Zones"]:
     fig, ax = plt.subplots(figsize=(8, 4))
     index = clean_obs.loc[zone].index
 
-    ax.plot(index, clean_ens.loc[zone, "HPE"], label="HPE")
-    ax.scatter(index, clean_obs.loc[zone], label="Observed Production", s=1)
-
     ax.plot(index, clean_ens.loc[zone], color="black", alpha=0.1)
     ax.plot(index[0], 0, color="black", alpha=0.5, label="Ensembles")
 
+    ax.plot(index, clean_ens.loc[zone, "HPE"], label="HPE")
+    ax.scatter(index, clean_obs.loc[zone], label="Observed Production", s=1)
+
     ax.legend()
     ax.set_xlabel("Date")
-    ax.set_ylabel("Power production (MW)")
+    ax.set_ylabel("Power production (MWH)")
+    ax.tick_params(axis="x", labelrotation=15)
 
     fig.savefig(save_path / "Figures" / f"{zone} full")
     ax.set_xlim(period)
     fig.savefig(save_path / "Figures" / f"{zone} small")
 
-# %% comparison
+# %% comparison full
 
 df = clean_obs.unstack(0)
+fig, ax = plt.subplots()
+
+ax.plot(df.index, df, alpha=0.5)
+
+ax.legend(df.columns)
+ax.set_xlabel("Date")
+ax.set_ylabel("Power production (MWH)")
+ax.tick_params(axis="x", labelrotation=20)
+fig.savefig(save_path / "Figures" / "Comparison full")
+
+
+# %% comparison small
+
 fig, ax = plt.subplots()
 
 ax.plot(df.index, df)
 
 ax.legend(df.columns)
 ax.set_xlabel("Date")
-ax.set_ylabel("Power production (MW)")
-
-fig.savefig(save_path / "Figures" / "Comparison full")
+ax.set_ylabel("Power production (MWH)")
 ax.set_xlim(period)
+ax.tick_params(axis="x", labelrotation=20)
 fig.savefig(save_path / "Figures" / "Comparison small")
 
 # %% tables
-obs = pd.concat((raw_obs, clean_obs), keys=["Raw", "Clean"], axis=1)
-ens = pd.concat((raw_ens, clean_ens), keys=["Raw", "Clean"], axis=0).stack()
-index = obs.index.unique(-1)
 
 
 def Negative(x):
@@ -74,7 +82,7 @@ def Problematic(x):
     return ((0 < x) & (x < parameters["low_value"])).sum()
 
 
-def Nan(x):
+def NAN(x):
     return x.isna().sum()
 
 
@@ -82,9 +90,8 @@ def Inf(x):
     return (x == np.inf).sum() + (x == -np.inf).sum()
 
 
-obs_table = obs.groupby(level=0).agg(["count", "min", "max", Negative, Problematic, Nan]).stack(level=0)
-ens_table = ens.groupby(level=(1, 0)).agg(["count", "min", "max", Nan])
-
+obs_table = raw_obs.groupby(level=0).agg(["count", "min", "max", Negative, Problematic, NAN])
+ens_table = raw_ens.stack().groupby(level=0).agg(["count", "min", "max", NAN])
 
 obs_table.style.format(precision=2).to_latex(
     save_path / "Tables" / "Observation Summary.tex",
@@ -96,10 +103,11 @@ obs_table.style.format(precision=2).to_latex(
     multicol_align="r",
     multirow_align="r",
     caption=(
-        f"Summary table for the observed production data. First datapoint {index.min()} last datapoint {index.max()}. "
+        f"Summary table for the observed production data. "
         f"Problematic values are values $0 \leq x < {parameters['low_value']}$",
-        "Summary table for Production",
+        "Summary table for Production data",
     ),
+    label="tab:data:observation",
 )
 
 ens_table.style.format(precision=2).to_latex(
@@ -112,9 +120,10 @@ ens_table.style.format(precision=2).to_latex(
     multicol_align="r",
     multirow_align="r",
     caption=(
-        f"Summary table for the ensemble data. First datapoint {index.min()} last datapoint {index.max()}. ",
-        "Summary table for Production",
+        "Summary table for Ensemble data",
+        "Summary table for Ensemble data",
     ),
+    label="tab:data:ensemble",
 )
 
 # %% Illustrate data split
@@ -143,7 +152,7 @@ split_table = pd.DataFrame(
     ],
     index=["Start", "End", "Datapoints", "Datapoints (Days)"],
     columns=["Train", "Test"],
-).T
+)
 split_table.style.format(precision=2).to_latex(
     save_path / "Tables" / "Datasplit.tex",
     hrules=True,
@@ -154,12 +163,9 @@ split_table.style.format(precision=2).to_latex(
     multicol_align="r",
     multirow_align="r",
     caption=(
-        (
-            "Data is split into two parts. A train set and a test set. "
-            "Split was chosen to be 64\% - 36\%.  Giving roughly 1 year of test data."
-        ),
-        "Train-test split of data",
+        ("The data was split into a train set and a test set"),
+        "Train-test split",
     ),
 )
 
-plt.close("all")
+# plt.close("all")

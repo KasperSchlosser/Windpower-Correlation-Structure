@@ -82,7 +82,7 @@ def diagnostic_plots(normal_residuals, index, save_path=None, individual=False):
         figs, axes = zip(*[plt.subplots() for _ in plots])
 
     else:
-        fig, axes = plt.subplots(3, 2, figsize=(12, 12))
+        fig, axes = plt.subplots(3, 2, figsize=(8, 12))
         axes = axes.flatten()
         figs = [fig]
 

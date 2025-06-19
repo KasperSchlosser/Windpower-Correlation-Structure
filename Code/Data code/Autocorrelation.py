@@ -102,8 +102,10 @@ for zone, model in scores.index.unique():
 
         tmp = correlation_model.modelres.apply(res[0]["Normal"]["Observation"], refit=False)
 
-        resid_onestep.loc[idx[zone, :]] = tmp.resid[test_index].values
-
+        # studentized residuals
+        resid_onestep.loc[idx[zone, :]] = tmp.resid[test_index].values / np.sqrt(
+            pipeline.correlation_model.modelres.params[-1]
+        )
 
 model_params = pd.concat(model_params, names=["Zone"])
 model_params = model_params.stack().unstack(level=1)

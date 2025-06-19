@@ -5,7 +5,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import nabqra.plotting as nplt
+
 from pandas import IndexSlice as idx
+from matplotlib.colors import LinearSegmentedColormap
 
 PATH = pathlib.Path.cwd().parents[1]
 load_path = PATH / "Data" / "Autocorrelation"
@@ -29,7 +31,7 @@ zone = "DK1-onshore"
 obs = observations.loc[zone]
 period = [np.datetime64("2023-10-17"), np.datetime64("2023-11-02")]
 
-fig, axes = plt.subplots(3, 1, figsize=(14, 9), sharex=True)
+fig, axes = plt.subplots(3, 1, figsize=(8, 12), sharex=True)
 axes = axes.ravel()
 
 for model, ax in zip(models, axes):
@@ -43,6 +45,7 @@ for model, ax in zip(models, axes):
     ax.set_title(model)
 
 fig.savefig(save_path / "Figures" / "model_example")
+plt.close(fig)
 
 # %% Sarma in 3 spaces
 
@@ -50,7 +53,7 @@ zone = "DK1-onshore"
 obs = observations.loc[zone]
 period = [np.datetime64("2023-10-17"), np.datetime64("2023-11-02")]
 
-fig, axes = plt.subplots(3, 1, figsize=(14, 9), sharex=True)
+fig, axes = plt.subplots(3, 1, figsize=(8, 12), sharex=True)
 axes = axes.ravel()
 
 for space, ax in zip(["Original", "CDF", "Normal"], axes):
@@ -63,23 +66,34 @@ for space, ax in zip(["Original", "CDF", "Normal"], axes):
     ax.set_title(space)
 
 fig.savefig(save_path / "Figures" / "space_example")
+plt.close(fig)
 
 # %% Residual
 
 for zone, df in resids_onestep.groupby("Zone"):
     print(zone)
     figs, _ = nplt.diagnostic_plots(
-        df.values.squeeze() / df.std().values,
+        df.values.squeeze(),
         df.index.get_level_values(1),
         save_path=save_path / "Figures" / "Residuals" / f"{zone}",
     )
-    figs[0].suptitle(f"{zone}")
+    # figs[0].suptitle(f"{zone}")
+    plt.close(figs[0])
+
+# across zones
+
+figs, _ = nplt.diagnostic_plots(
+    resids_onestep.values.squeeze(),
+    resids_onestep.index.get_level_values(1),
+    save_path=save_path / "Figures" / "Residuals" / "Corrected Residuals",
+)
+plt.close(figs[0])
 
 
 # %% param tabel
 tmp = params.loc[idx[:, ["coef", "std err"]], :]
-tmp = params.groupby("Zone").apply(lambda x: x.T.astype(str).apply(lambda x: "$" + "\pm".join(x) + "$", 1)).T
-tmp = tmp.set_index(pd.Index(["$AR_1$", "$MA_1$", "$SAR_{1,24}$", "$SAM_{1,24}$", "$\sigma^2$"]))
+tmp = tmp.groupby("Zone").apply(lambda x: x.T.astype(str).apply(lambda x: "$" + "\pm".join(x) + "$", 1)).T
+tmp = tmp.set_index(pd.Index(["$AR_1$", "$MA_1$", "$SAR_{1,24}$", "$SMA_{1,24}$", "$\sigma^2$"]))
 tmp.style.to_latex(
     save_path / "Tables" / "Params.tex",
     hrules=True,
@@ -89,6 +103,7 @@ tmp.style.to_latex(
     position_float="centering",
     multicol_align="r",
     multirow_align="r",
+    column_format="lrrrr",
     caption=(
         "Parameters for the sarma model in normal space in all zones there is a strong autocorrelation at lag 1. "
         "There is also a strong seasonal component in all zone except DK2-offshore",
@@ -108,7 +123,7 @@ min_format = pd.DataFrame(min_format, index=scores.index, columns=scores.columns
 
 (
     scores.style.format(precision=2)
-    .background_gradient(cmap="Reds", vmin=0, vmax=np.log(2), axis=None, gmap=gmap)
+    .background_gradient(cmap="Greens_r", vmin=0, vmax=np.log(2), axis=None, gmap=gmap)
     .apply(
         lambda x: min_format,
         axis=None,

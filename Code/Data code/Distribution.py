@@ -25,7 +25,7 @@ def create_models(quantiles, lims):
     return {
         "Linear": nabqra.quantiles.linear_model(quantiles, *lims, tail_correction=False),
         "Linear - tail": nabqra.quantiles.linear_model(quantiles, *lims, tail_correction=True),
-        "Spline": nabqra.quantiles.spline_model(quantiles, *lims)
+        "Spline": nabqra.quantiles.spline_model(quantiles, *lims),
     }
 
 
@@ -35,25 +35,25 @@ dists = (
     SimpleNamespace(
         dist=stats.uniform(-6, 12),
         intlim=(-6, 6),
-        cdflim=(1e-12, 1-1e-12),
+        cdflim=(1e-12, 1 - 1e-12),
         name="Uniform",
     ),
     SimpleNamespace(
         dist=stats.norm(),
         intlim=(-5, 5),
-        cdflim=(1e-12, 1-1e-12),
+        cdflim=(1e-12, 1 - 1e-12),
         name="Normal",
     ),
     SimpleNamespace(
-        dist=stats.cauchy(scale=1/6),
+        dist=stats.cauchy(scale=1 / 6),
         intlim=(-6, 6),
-        cdflim=(1e-4, 1-1e-4),
+        cdflim=(1e-4, 1 - 1e-4),
         name="Cauchy",
     ),
     SimpleNamespace(
         dist=stats.beta(4, 17, loc=-6, scale=12),
         intlim=(-6, 2),
-        cdflim=(1e-12, 1-1e-12),
+        cdflim=(1e-12, 1 - 1e-12),
         name="Beta",
     ),
 )
@@ -61,17 +61,12 @@ dists = (
 # Create dataframes for scores and estimates
 quantiles = np.arange(0.25, 1, 0.25)
 model_names = list(create_models([0, 1], [0, 1]).keys())
-scores = pd.DataFrame(index=model_names,
-                      columns=pd.MultiIndex.from_product([(x.name for x in dists),
-                                                          [r"$W_1$", r"$W_2$", r"$D_{KL}$"]]
-                                                         )
-                      )
-estimates = pd.DataFrame(index=X,
-                         columns=pd.MultiIndex.from_product([["True"] + model_names,
-                                                             (x.name for x in dists),
-                                                             ["cdf", "pdf"]]
-                                                            )
-                         )
+scores = pd.DataFrame(
+    index=model_names, columns=pd.MultiIndex.from_product([(x.name for x in dists), [r"$W_1$", r"$W_2$", r"$D_{KL}$"]])
+)
+estimates = pd.DataFrame(
+    index=X, columns=pd.MultiIndex.from_product([["True"] + model_names, (x.name for x in dists), ["cdf", "pdf"]])
+)
 
 # Calculate scores and estimates
 for dist in dists:
@@ -87,24 +82,19 @@ for dist in dists:
         model.fit(quantile_vals)
         estimates[name, label, "cdf"] = model.cdf(X)
         estimates[name, label, "pdf"] = model.pdf(X)
-        scores.loc[name, idx[label, r"$W_1$"]] = nabqra.scoring.continous_wasserstein(model.quantile,
-                                                                                      dist.dist.ppf,
-                                                                                      dist.cdflim,
-                                                                                      order=1,
-                                                                                      limit=200,
-                                                                                      )[0]
-        scores.loc[name, idx[label, r"$W_2$"]] = nabqra.scoring.continous_wasserstein(model.quantile,
-                                                                                      dist.dist.ppf,
-                                                                                      dist.cdflim,
-                                                                                      limit=200,
-                                                                                      order=2
-                                                                                      )[0]
-        scores.loc[name, idx[label, r"$D_{KL}$"]] = nabqra.scoring.continous_kl_divergence(model.pdf,
-                                                                                           dist.dist.pdf,
-                                                                                           dist.intlim,
-                                                                                           limit=300,
-                                                                                           points=quantiles
-                                                                                           )[0]
+        scores.loc[name, idx[label, r"$W_1$"]] = nabqra.scoring.continous_wasserstein(
+            model.quantile,
+            dist.dist.ppf,
+            dist.cdflim,
+            order=1,
+            limit=200,
+        )[0]
+        scores.loc[name, idx[label, r"$W_2$"]] = nabqra.scoring.continous_wasserstein(
+            model.quantile, dist.dist.ppf, dist.cdflim, limit=200, order=2
+        )[0]
+        scores.loc[name, idx[label, r"$D_{KL}$"]] = nabqra.scoring.continous_kl_divergence(
+            model.pdf, dist.dist.pdf, dist.intlim, limit=300, points=quantiles
+        )[0]
 
 # Save scores and estimates to files
 scores.to_csv(save_path / "scores.csv")
@@ -118,20 +108,20 @@ sigma = 0.7
 window = 24
 Nwindow = 12
 
-sample_path = np.zeros(window*Nwindow)
+sample_path = np.zeros(window * Nwindow)
 pred_path = np.zeros((Nwindow, window))
 resid = stats.norm(scale=sigma).rvs(len(sample_path), random_state=360)
 
 for i in range(1, sample_path.shape[0]):
-    sample_path[i] = ar1*sample_path[i-1] + resid[i]
+    sample_path[i] = ar1 * sample_path[i - 1] + resid[i]
 
 pred_path[:, 0] = sample_path[::window]
 pred_var = np.zeros(window)
 pred_interval = np.zeros((2, window))
 
 for i in range(1, window):
-    pred_path[:, i] = ar1*pred_path[:, i-1]
-    pred_var[i] = ar1**2*pred_var[i-1] + sigma**2
+    pred_path[:, i] = ar1 * pred_path[:, i - 1]
+    pred_var[i] = ar1**2 * pred_var[i - 1] + sigma**2
 
 pred_path = pred_path.ravel()[:, np.newaxis]
 pred_var = np.tile(pred_var, Nwindow)
@@ -146,9 +136,10 @@ quantiles = np.pad(quantiles, (1, 1), constant_values=(0.01, 0.99))
 q_vals = dist.ppf(quantiles)
 models = create_models(quantiles, [-10, 10])
 
-df = pd.DataFrame(index=range(pred.shape[0]),
-                  columns=pd.MultiIndex.from_product((["True"] + list(models.keys()),
-                                                      ["Mean", "Lower", "Upper"])))
+df = pd.DataFrame(
+    index=range(pred.shape[0]),
+    columns=pd.MultiIndex.from_product((["True"] + list(models.keys()), ["Mean", "Lower", "Upper"])),
+)
 df["True"] = dist.ppf(stats.norm().cdf(pred))
 
 for name, model in models.items():
@@ -156,46 +147,3 @@ for name, model in models.items():
 
 df.to_csv(save_path / "tail_problem.csv")
 df.to_pickle(save_path / "tail_problem.pkl")
-
-# %% Zone Data
-
-actuals = pd.read_pickle(load_path / "NABQR" / "actuals.pkl")
-lstm_estimates = pd.read_pickle(load_path / "NABQR" / "lstm_quantiles.pkl")
-taqr_estimates = pd.read_pickle(load_path / "NABQR" / "taqr_quantiles.pkl")
-
-
-lstm_observations = pd.DataFrame(index=actuals.index,
-                                 columns=pd.MultiIndex.from_product((
-                                     zones,
-                                     ["CDF", "Normal"]
-                                 )),
-                                 dtype=np.float64
-                                 )
-
-taqr_observations = pd.DataFrame(index=actuals.index,
-                                 columns=pd.MultiIndex.from_product((
-                                     zones,
-                                     ["CDF", "Normal"]
-                                 )),
-                                 dtype=np.float64
-                                 )
-
-# i just assume they used the same quantiles
-# which i did for now
-quantiles = lstm_estimates.columns.unique(1).values.astype(np.float64)
-for zone in zones:
-    model = nabqra.quantiles.spline_model(quantiles, *zone_limits[zone])
-
-    lstm = model.transform(lstm_estimates[zone].values, actuals[zone].values)
-    lstm_observations.loc[:, idx[zone, "Normal"]] = lstm[0].squeeze()
-    lstm_observations.loc[:, idx[zone, "CDF"]] = lstm[1].squeeze()
-
-    taqr = model.transform(taqr_estimates[zone].values, actuals[zone].values)
-    taqr_observations.loc[:, idx[zone, "Normal"]] = taqr[0].squeeze()
-    taqr_observations.loc[:, idx[zone, "CDF"]] = taqr[1].squeeze()
-
-lstm_observations.to_csv(save_path / "lstm_observations.csv")
-lstm_observations.to_pickle(save_path / "lstm_observations.pkl")
-
-taqr_observations.to_csv(save_path / "taqr_observations.csv")
-taqr_observations.to_pickle(save_path / "taqr_observations.pkl")

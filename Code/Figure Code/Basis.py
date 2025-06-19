@@ -26,50 +26,53 @@ models = preds.index.unique(1)
 
 # %% NN training
 
-fig, axes = plt.subplots(2, 2, sharex=True, sharey=False)
+fig, axes = plt.subplots(2, 2, sharex=True, sharey=False, figsize=(14, 8))
 axes = axes.ravel()
 for ax, zone in zip(axes, zones):
     tmp = history.loc[zone, "loss"].unstack("Model")
-    ax.semilogy(tmp)
+    ax.plot(tmp)
     ax.legend(tmp.columns)
     ax.set_title(zone)
-fig.suptitle("Train Loss")
+# fig.suptitle("Train Loss")
 fig.supxlabel("Epoch")
 fig.supylabel("Loss")
 
 fig.savefig(save_path / "Figures" / "Train loss")
+plt.close(fig)
 
 
-fig, axes = plt.subplots(2, 2, sharex=True, sharey=False)
+fig, axes = plt.subplots(2, 2, sharex=True, sharey=False, figsize=(14, 8))
 axes = axes.ravel()
 for ax, zone in zip(axes, zones):
     tmp = history.loc[zone, "val_loss"].unstack("Model")
-    ax.semilogy(tmp)
+    ax.plot(tmp)
     ax.legend(tmp.columns)
     ax.set_title(zone)
-fig.suptitle("Validation Loss")
+# fig.suptitle("Validation Loss")
 fig.supxlabel("Epoch")
 fig.supylabel("Loss")
 fig.savefig(save_path / "Figures" / "Validation loss")
+plt.close(fig)
 
 for model in history.index.unique("Model"):
 
     fig, ax = plt.subplots()
     for zone in zones:
-        l = ax.semilogy(history.loc[zone, model]["loss"], label=f"{zone}")
-        ax.semilogy(
+        l = ax.plot(history.loc[zone, model]["loss"], label=f"{zone}")
+        ax.plot(
             history.loc[zone, model]["val_loss"],
             color=l[0].get_color(),
             linestyle="--",
         )
-    ax.semilogy(0, 1, color="black", label="Train loss")
-    ax.semilogy(0, 1, color="black", linestyle="--", label="Validation loss")
+    ax.plot(0, 1, color="black", label="Train loss")
+    ax.plot(0, 1, color="black", linestyle="--", label="Validation loss")
     ax.legend()
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Loss")
 
-    ax.set_title(model)
+    # ax.set_title(model)
     fig.savefig(save_path / "Figures" / f"{model} History")
+    plt.close(fig)
 
 # %% Model examples
 
@@ -87,9 +90,10 @@ for model in models:
     ax.scatter(obs.index, obs, color="black", s=1)
     ax.set_xlim(period)
     ax.set_ylim([-10, 3800])
-    ax.set_title(model)
+    # ax.set_title(model)
 
-    fig.savefig(save_path / "Figures" / f"{model}_example")
+    fig.savefig(save_path / "Figures" / f"{model} example")
+    plt.close(fig)
 
 
 # %% NABQR vs feature
@@ -104,16 +108,17 @@ df_feature = preds.loc[zone, "Feature"]
 
 fig, ax = plt.subplots()
 
-nplt.band_plot(df_nabqr.index, df_nabqr["0.50"], df_nabqr["0.05"], df_nabqr["0.95"], ax=ax, label="NABQR")
+nplt.band_plot(df_nabqr.index, df_nabqr["0.50"], df_nabqr["0.05"], df_nabqr["0.95"], ax=ax, label="NABQR - TAQR")
 nplt.band_plot(
     df_feature.index, df_feature["0.50"], df_feature["0.05"], df_feature["0.95"], ax=ax, label="Feature Model"
 )
 ax.scatter(obs.index, obs, color="black", s=1)
 ax.set_xlim(period)
-ax.set_title(model)
+# ax.set_title(model)
 ax.legend()
 
 fig.savefig(save_path / "Figures" / "Model Comparison")
+plt.close(fig)
 
 # %% DK2 offshore
 
@@ -127,17 +132,17 @@ df_feature = preds.loc[zone, "Feature"]
 
 fig, ax = plt.subplots()
 
-nplt.band_plot(df_simple.index, df_simple["0.50"], df_simple["0.05"], df_simple["0.95"], ax=ax, label="NABQR")
+nplt.band_plot(df_simple.index, df_simple["0.50"], df_simple["0.05"], df_simple["0.95"], ax=ax, label="Simple model")
 nplt.band_plot(
     df_feature.index, df_feature["0.50"], df_feature["0.05"], df_feature["0.95"], ax=ax, label="Feature Model"
 )
 ax.scatter(obs.index, obs, color="black", s=1)
 ax.set_xlim(period)
-ax.set_title(model)
+# ax.set_title(model)
 ax.legend()
 
 fig.savefig(save_path / "Figures" / "DK2-offshore")
-
+plt.close(fig)
 
 # %% pseudo residuals
 
@@ -148,6 +153,7 @@ for (zone, model), df in resids.groupby(level=(0, 1)):
         df["Normal"], df.index.get_level_values(2), save_path=save_path / "Figures" / "Residuals" / f"{zone} - {model}"
     )
     figs[0].suptitle(f"{zone} - {model}")
+    plt.close(figs[0])
 
 for model, df in resids.groupby(level=(1)):
     print(model)
@@ -155,7 +161,7 @@ for model, df in resids.groupby(level=(1)):
         df["Normal"], df.index.get_level_values(2), save_path=save_path / "Figures" / "Residuals" / f"{model}"
     )
     figs[0].suptitle(model)
-
+    plt.close(figs[0])
 
 # %% scores
 
@@ -171,7 +177,7 @@ min_format = pd.DataFrame(min_format, index=scores.index, columns=scores.columns
 
 (
     scores.style.format(precision=2)
-    .background_gradient(cmap="Reds", vmin=0, vmax=np.log(2), axis=None, gmap=gmap)
+    .background_gradient(cmap="Greens_r", vmin=0, vmax=np.log(2), axis=None, gmap=gmap)
     .apply(
         lambda x: min_format,
         axis=None,
@@ -181,7 +187,7 @@ min_format = pd.DataFrame(min_format, index=scores.index, columns=scores.columns
         hrules=True,
         clines="skip-last;data",
         convert_css=True,
-        position="h",
+        position="ht",
         position_float="centering",
         multicol_align="r",
         multirow_align="r",
@@ -193,5 +199,3 @@ min_format = pd.DataFrame(min_format, index=scores.index, columns=scores.columns
         ),
     )
 )
-# %% close plots
-plt.close("all")
