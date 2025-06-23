@@ -5,7 +5,6 @@ import tomllib
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
-import scipy.stats as stats
 import numba as nb
 
 PATH = pathlib.Path.cwd().parents[1]
@@ -31,23 +30,29 @@ def vars_e(arr, p=0.5):
             for j in range(n):
                 res[i, j] += abs(arr[i, col] - arr[j, col]) ** p
 
+    for i in range(n):
+        for j in range(i + 1, n):
+            res[j, i] = res[i, j]
     return res / k
 
 
 @nb.jit(nb.float64[:, :, :](nb.float64[:, :], nb.float64[:, :], nb.float64), nopython=True, nogil=True, parallel=True)
-def VarS(arr, mu, p=0.5):
+def VarS(arr, mu, p):
 
     n, k = arr.shape
 
-    # mu = vars_e(arr, p)
     res = np.zeros((k, n, n))
 
     for col in range(k):
         for i in range(n):
-            for j in range(n):
+            for j in range(i + 1, n):
                 res[col, i, j] += (abs(arr[i, col] - arr[j, col]) ** p - mu[i, j]) ** 2
 
-    return res
+    for i in range(n):
+        for j in range(i + 1, n):
+            res[j, i] = res[i, j]
+    # equal waight but no weight for diagonal
+    return res / (n * (n - 1))
 
 
 # %%
@@ -67,7 +72,7 @@ process = pd.concat(
         pd.DataFrame(np.quantile(sims_correct, quantiles, axis=1).T, columns=[f"{x:.2f}" for x in quantiles]),
         pd.DataFrame(np.quantile(sims_wrong, quantiles, axis=1).T, columns=[f"{x:.2f}" for x in quantiles]),
     ],
-    keys=["Correct model", "Incorrect model"],
+    keys=["AR(2) model", "AR(1) model"],
 )
 diffs = pd.concat([pd.DataFrame(np.abs(sims_correct - sims_correct[0, :]).T ** p) for p in ps], keys=ps)
 
@@ -79,13 +84,13 @@ scores_wrong = []
 for p in ps:
     e_correct = vars_e(sims_correct, p)
     e_wrong = vars_e(sims_wrong, p)
-    scores_correct.append(pd.Series(VarS(sims_correct, e_correct, p).mean(axis=(1, 2))) ** (1 / (2 * p)))
-    scores_wrong.append(pd.Series(VarS(sims_correct, e_wrong, p).mean(axis=(1, 2))) ** (1 / (2 * p)))
+    scores_correct.append(pd.Series(VarS(sims_correct, e_correct, p).sum(axis=(1, 2))) ** (1 / (2 * p)))
+    scores_wrong.append(pd.Series(VarS(sims_correct, e_wrong, p).sum(axis=(1, 2))) ** (1 / (2 * p)))
 
 scores_correct = pd.concat(scores_correct, keys=[str(x) for x in ps], axis=1)
 scores_wrong = pd.concat(scores_wrong, keys=[str(x) for x in ps], axis=1)
 
-scores = pd.concat([scores_correct, scores_wrong], keys=["Correct model", "Incorrect model"])
+scores = pd.concat([scores_correct, scores_wrong], keys=["AR(2) model", "AR(1) model"])
 
 
 # %%

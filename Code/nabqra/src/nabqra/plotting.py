@@ -68,7 +68,7 @@ def plot_qq(normal_residuals, ax):
     ax.set_ylabel("Observed Quantile")
 
 
-def diagnostic_plots(normal_residuals, index, save_path=None, individual=False):
+def diagnostic_plots(normal_residuals, index, save_path=None, individual=False, closefig=False):
 
     if save_path:
         save_dir = save_path.parent
@@ -99,6 +99,14 @@ def diagnostic_plots(normal_residuals, index, save_path=None, individual=False):
                 fig.savefig(save_dir / (f"{base_name}_{plot}"))
         else:
             plt.savefig(save_dir / f"{base_name}")
+
+    if closefig:
+        if individual:
+            for plot, fig in zip(plots, figs):
+                plt.close(fig)
+        else:
+            plt.savefig(save_dir / f"{base_name}")
+            plt.close(fig)
 
     return figs, axes
 

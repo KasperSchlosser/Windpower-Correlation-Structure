@@ -45,10 +45,10 @@ dists = (
         name="Normal",
     ),
     SimpleNamespace(
-        dist=stats.cauchy(scale=1 / 6),
+        dist=stats.t(2),
         intlim=(-6, 6),
         cdflim=(1e-4, 1 - 1e-4),
-        name="Cauchy",
+        name="Student's t",
     ),
     SimpleNamespace(
         dist=stats.beta(4, 17, loc=-6, scale=12),

@@ -262,8 +262,8 @@ ediff = np.load(load_path / "ediff.npy")
 
 fig, ax = plt.subplots()
 
-nabqra.plotting.band_plot(np.arange(24), *process.loc["Correct model"].values.T, ax=ax, label="Correct model")
-nabqra.plotting.band_plot(np.arange(24), *process.loc["Incorrect model"].values.T, ax=ax, label="Incorrect model")
+nabqra.plotting.band_plot(np.arange(24), *process.loc["AR(2) model"].values.T, ax=ax, label="AR(2) model")
+nabqra.plotting.band_plot(np.arange(24), *process.loc["AR(1) model"].values.T, ax=ax, label="AR(1) model")
 ax.set_xlabel("t")
 ax.set_ylabel("$y_t$")
 ax.legend()
@@ -274,8 +274,8 @@ plt.close(fig)
 fig, axes = plt.subplots(1, 2, layout="constrained", sharex=True, sharey=True)
 im = axes[0].imshow(ediff[0, :, :], vmin=0, vmax=1.7)
 im = axes[1].imshow(ediff[1, :, :], vmin=0, vmax=1.7)
-axes[0].set_title("Correct model")
-axes[1].set_title("Incorrect model")
+axes[0].set_title("AR(2) model")
+axes[1].set_title("AR(1) model")
 
 axes[0].set_xlabel("$t_j$")
 axes[0].set_ylabel("$t_i$")
@@ -286,7 +286,7 @@ plt.close(fig)
 
 fig, ax = plt.subplots()
 sns.kdeplot(
-    scores.loc["Correct model"].melt(var_name="p"),
+    scores.loc["AR(2) model"].melt(var_name="p"),
     x="value",
     hue="p",
     fill=True,
@@ -296,10 +296,20 @@ ax.set_xlabel("VarS")
 fig.savefig(save_path / "Figures" / "Vars dist")
 plt.close(fig)
 
+# fig, ax = plt.subplots()
+# sns.kdeplot(
+#     scores.loc["AR(1) model"].melt(var_name="p"),
+#     x="value",
+#     hue="p",
+#     fill=True,
+#     ax=ax,
+# )
+# ax.set_xlabel("VarS")
+# fig.savefig(save_path / "Figures" / "Vars dist")
 
 fig, ax = plt.subplots()
 sns.kdeplot(
-    (scores.loc["Incorrect model"] - scores.loc["Correct model"]).melt(var_name="p"),
+    (scores.loc["AR(1) model"] - scores.loc["AR(2) model"]).melt(var_name="p"),
     x="value",
     hue="p",
     fill=True,
@@ -311,7 +321,7 @@ fig.savefig(save_path / "Figures" / "Model dist")
 plt.close(fig)
 
 vars_precision = pd.concat(
-    [(scores.loc["Incorrect model"] >= scores.loc["Correct model"]).mean().to_frame("Preciison").T], keys=["p"], axis=1
+    [(scores.loc["AR(1) model"] >= scores.loc["AR(2) model"]).mean().to_frame("Precison").T], keys=["p"], axis=1
 )
 
 vars_precision.style.format(precision=2).to_latex(
