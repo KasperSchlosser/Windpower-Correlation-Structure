@@ -14,7 +14,7 @@ from nabqra.misc import NABQRDataset
 
 # from pandas import IndexSlice as idx
 
-keras.utils.set_random_seed(42)
+keras.utils.set_random_seed(666)
 
 PATH = pathlib.Path.cwd().parents[1]
 load_path = PATH / "Data" / "Data"
@@ -48,15 +48,14 @@ models = [
                 keras.Input(shape=(7, ensembles.shape[-1])),
                 keras.layers.LSTM(256, return_sequences=False),
                 keras.layers.Dense(len(parameters["Quantiles"]), activation="sigmoid"),
-                keras.layers.Dense(len(parameters["Quantiles"])),
+                keras.layers.Dense(len(parameters["Quantiles"]), activation="leaky_relu"),
             ]
         ).get_config(),
         "opt_args": {"learning_rate": 1e-3},
-        "data_args": {"reverse": False, "timesteps": (0, 1, 2, 5, 11, 23, 47), "preprocessing": MinMaxScaler()},
+        "data_args": {"reverse": False, "timesteps": (0, 1, 2, 6, 12, 24, 48), "preprocessing": MinMaxScaler()},
         "loader_args": {
             "batch_size": 24 * 7,
         },
-        "fit_args": {"epochs": 200},
     },
     {
         "name": "Simple",
@@ -69,33 +68,29 @@ models = [
         ).get_config(),
         "opt_args": {"learning_rate": 1e-3},
         "data_args": {"reverse": True, "timesteps": (0,), "preprocessing": MinMaxScaler(feature_range=(-1, 1))},
-        "loader_args": {"batch_size": 6 * 1, "shuffle": False},
-        "fit_args": {"epochs": 200},
+        "loader_args": {"batch_size": 24 * 1, "shuffle": False},
     },
     {
         "name": "Feature",
         "model_config": keras.Sequential(
             [
-                keras.Input(shape=(4, ensembles.shape[-1])),
-                keras.layers.Flatten(),
-                keras.layers.GaussianNoise(0.1),
-                keras.layers.Dense(20),
-                keras.layers.ELU(),
-                keras.layers.Dense(10),
-                keras.layers.ELU(),
-                keras.layers.Dense(5),
-                keras.layers.Dense(10),
+                keras.Input(shape=(49, ensembles.shape[-1])),
+                keras.layers.GaussianNoise(0.03),
+                keras.layers.Dense(3, activation="selu"),
+                keras.layers.Dense(10, activation="selu"),
+                keras.layers.LSTM(10),
+                keras.layers.Dense(10, activation="selu"),
+                keras.layers.Dense(5, activation="selu"),
                 keras.layers.Dense(len(parameters["Quantiles"])),
             ]
         ).get_config(),
         "opt_args": {"learning_rate": 1e-3},
         "data_args": {
             "reverse": True,
-            "timesteps": (0, 5, 11, 23),
+            "timesteps": np.arange(49),
             "preprocessing": MinMaxScaler(feature_range=(-1, 1)),
         },
-        "loader_args": {"batch_size": 6 * 1, "shuffle": False},
-        "fit_args": {"epochs": 200},
+        "loader_args": {"batch_size": 24 * 7, "shuffle": False},
     },
 ]
 
@@ -135,7 +130,7 @@ for zone, vals in product(zones, models):
     model.compile(loss=Quantileloss(parameters["Quantiles"]), optimizer=keras.optimizers.Adam(**vals["opt_args"]))
     val_stop = keras.callbacks.EarlyStopping(monitor="val_loss", patience=20, restore_best_weights=True)
 
-    hist = model.fit(train_data, validation_data=test_data, **vals["fit_args"], callbacks=[val_stop])
+    hist = model.fit(train_data, validation_data=test_data, epochs=1000, callbacks=[val_stop])
     preds = model.predict(full_data)
 
     history[zone][name] = pd.DataFrame(hist.history)
@@ -144,8 +139,12 @@ for zone, vals in product(zones, models):
     predictions[zone][name] = pd.DataFrame(preds.squeeze(), index=date_index, columns=quantiles_str)
 
     if name == "Feature":
-        extractor = keras.Model(inputs=model.inputs, outputs=model.layers[6].output)
+        extractor = keras.Model(inputs=model.inputs, outputs=model.layers[-2].output)
         features.loc(axis=0)[zone, :] = extractor.predict(full_data).squeeze()
+
+    # save the models
+
+    model.save(save_path / "Models" / f"{name} - {zone}.keras")
 
 
 # %% save results

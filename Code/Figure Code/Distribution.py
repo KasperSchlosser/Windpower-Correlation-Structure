@@ -142,6 +142,28 @@ for dist in dists:
     fig.savefig(save_path / "Figures" / (dist + " pdf"))
     plt.close(fig)
 
+# %% test quantiles
+
+test_quantiles = pd.read_pickle(load_path / "test quantiles.pkl").sort_index().T
+test_quantiles.columns = [f"$p_{{{x:0.3g}}}$" for x in test_quantiles.columns]
+
+test_quantiles.style.format(precision=2).to_latex(
+    save_path / "Tables" / "test quantiles.tex",
+    hrules=True,
+    clines="skip-last;data",
+    label="tab:distributions:testinterpolation",
+    convert_css=True,
+    position="htb",
+    position_float="centering",
+    multicol_align="r",
+    multirow_align="r",
+    caption=(
+        "The values and corresponding quantiles used for testing the interpolation methods",
+        "Test interpolation points",
+    ),
+)
+
+
 # %% score table
 
 score_df.style.format(precision=2).highlight_min(axis=1, props="font-weight:bold;").to_latex(
@@ -151,6 +173,7 @@ score_df.style.format(precision=2).highlight_min(axis=1, props="font-weight:bold
     convert_css=True,
     position="htb",
     position_float="centering",
+    label="tab:distributions:testres",
     multicol_align="r",
     multirow_align="r",
     caption=(

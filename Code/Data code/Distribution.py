@@ -40,19 +40,19 @@ dists = (
     ),
     SimpleNamespace(
         dist=stats.norm(),
-        intlim=(-5, 5),
+        intlim=(-6, 6),
         cdflim=(1e-12, 1 - 1e-12),
         name="Normal",
     ),
     SimpleNamespace(
         dist=stats.t(2),
         intlim=(-6, 6),
-        cdflim=(1e-4, 1 - 1e-4),
+        cdflim=(1e-6, 1 - 1e-6),
         name="Student's t",
     ),
     SimpleNamespace(
-        dist=stats.beta(4, 17, loc=-6, scale=12),
-        intlim=(-6, 2),
+        dist=stats.beta(5, 3, loc=-6, scale=12),
+        intlim=(-6, 6),
         cdflim=(1e-12, 1 - 1e-12),
         name="Beta",
     ),
@@ -96,11 +96,32 @@ for dist in dists:
             model.pdf, dist.dist.pdf, dist.intlim, limit=300, points=quantiles
         )[0]
 
+
 # Save scores and estimates to files
 scores.to_csv(save_path / "scores.csv")
 scores.to_pickle(save_path / "scores.pkl")
 estimates.to_csv(save_path / "estimates.csv")
 estimates.to_pickle(save_path / "estimates.pkl")
+
+
+# Create a dataframe for quantiles, quantile values, and intlim
+quantile_df = pd.DataFrame(index=quantiles, columns=[dist.name for dist in dists])
+
+# Populate the dataframe with quantile values
+for dist in dists:
+    quantile_df[dist.name] = dist.dist.ppf(quantiles)
+
+# Add intlim values for each distribution
+intlim_df = pd.DataFrame({dist.name: [dist.intlim[0], dist.intlim[1]] for dist in dists}, index=[0, 1])
+
+# Combine quantile values and intlim into a single dataframe
+quantile_df = pd.concat([quantile_df, intlim_df])
+
+
+# Save quantiles and quantile values to files
+quantile_df.to_csv(save_path / "test quantiles.csv")
+quantile_df.to_pickle(save_path / "test quantiles.pkl")
+
 
 # %% Tail problem data generation
 ar1 = 0.85
