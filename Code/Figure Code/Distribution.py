@@ -145,7 +145,7 @@ for dist in dists:
 # %% test quantiles
 
 test_quantiles = pd.read_pickle(load_path / "test quantiles.pkl").sort_index().T
-test_quantiles.columns = [f"$p_{{{x:0.3g}}}$" for x in test_quantiles.columns]
+test_quantiles.columns = [f"$F^{{-1}}({x:.2f})$" for i, x in enumerate(test_quantiles.columns)]
 
 test_quantiles.style.format(precision=2).to_latex(
     save_path / "Tables" / "test quantiles.tex",
@@ -158,7 +158,7 @@ test_quantiles.style.format(precision=2).to_latex(
     multicol_align="r",
     multirow_align="r",
     caption=(
-        "The values and corresponding quantiles used for testing the interpolation methods",
+        "The interpoilation points used for testing the interpolation methods",
         "Test interpolation points",
     ),
 )

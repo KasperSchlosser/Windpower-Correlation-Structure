@@ -27,7 +27,7 @@ def variogram_weight(simulations, p=0.5, window=24, offset=24):
     return weights
 
 
-def variogram_score(simulations, actuals, p=0.5, window=24, offset=24, weight=None):
+def variogram_score(simulations, actuals, p=0.5, window=24, offset=0, weight=None):
 
     # simualtions are n observations times m simulations
     n, m = simulations.shape
@@ -66,9 +66,37 @@ def variogram_score(simulations, actuals, p=0.5, window=24, offset=24, weight=No
             variogram += np.diagflat(scores, -lag)
 
     variogram /= n_windows
-    score = (weight * variogram).sum()
+    score = ((weight * variogram).sum()) ** (1 / (2 * p))
 
-    return score, variogram
+    return (
+        score,
+        variogram,
+    )
+
+
+def variogram_distribution(simulations, p=0.5, window=24, offset=0, weight=None):
+
+    # simualtions are n observations times m simulations
+    n, m = simulations.shape
+
+    e_variogram = np.zeros((window, window))
+    std_variogram = np.zeros((window, window))
+
+    for i in range(window - 1):
+        for j in range(i + 1, window):
+
+            obsj = simulations[j::window, :]
+            obsi = simulations[i::window, :][: obsj.shape[0], :]
+
+            diffs = np.abs(obsi - obsj) ** p
+
+            e_variogram[i, j] = diffs.mean()
+            std_variogram[i, j] = diffs.std(ddof=1)
+
+            e_variogram[j, i] = e_variogram[i, j]
+            std_variogram[j, i] = std_variogram[i, j]
+
+    return e_variogram, std_variogram
 
 
 def continous_ranked_probability_score(simulations, actuals):

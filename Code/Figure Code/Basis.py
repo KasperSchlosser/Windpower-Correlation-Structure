@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import nabqra.plotting as nplt
+
 from pandas import IndexSlice as idx
 
 PATH = pathlib.Path.cwd().parents[1]
@@ -16,9 +17,9 @@ with open(PATH / "Settings" / "parameters.toml", "rb") as f:
     zones = parameters["Zones"]
     zone_limits = parameters["Zone-Limits"]
 
-scores = pd.read_pickle(load_path / "Basis scores.pkl")
+scores = pd.read_pickle(load_path / "Basis scores.pkl").astype(np.float64)
 history = pd.read_pickle(load_path / "History.pkl")
-preds = pd.read_pickle(load_path / "Basis Quantiles.pkl")
+preds = pd.read_pickle(load_path / "Basis Quantiles.pkl").sort_index()
 resids = pd.read_pickle(load_path / "Basis Residuals.pkl").astype(np.float64)
 observations = pd.read_pickle(load_path / ".." / "Data" / "cleaned_observations.pkl")
 
@@ -26,59 +27,44 @@ models = preds.index.unique(1)
 
 # %% NN training
 
-fig, axes = plt.subplots(2, 2, sharex=True, sharey=False, figsize=(14, 8))
+
+fig, axes = plt.subplots(2, 2, sharex=False, sharey=False, figsize=(14, 8))
 axes = axes.ravel()
+axes[-1].plot(1, 1, color="none", label="Model:")
 for ax, zone in zip(axes, zones):
-    tmp = history.loc[zone, "loss"].unstack("Model")
-    ax.plot(tmp)
-    ax.legend(tmp.columns)
+
+    tmp = history.loc[zone, ["loss", "val_loss"]].unstack("Model").loc[1:]
+
+    for m in tmp.columns.unique(1):
+        l = ax.semilogx(tmp["loss", m], label=m)
+        ax.semilogx(tmp["val_loss", m], linestyle="--", color=l[0].get_color())
+
+    # ax.legend()
     ax.set_title(zone)
-# fig.suptitle("Train Loss")
+    ax.set_ylim((tmp.min(axis=None) * 0.95, tmp.min(axis=1)[1] * 1.05))
+
+
+axes[-1].plot(1, 1, color="none", label=" ")
+axes[-1].plot(1, 1, color="none", label="Type:")
+axes[-1].plot(1, 1, color="black", linestyle="-", label="Train loss")
+axes[-1].plot(1, 1, color="black", linestyle="--", label="Validation loss")
+
+
+fig.legend(*ax.get_legend_handles_labels())
+
+
 fig.supxlabel("Epoch")
 fig.supylabel("Loss")
 
-fig.savefig(save_path / "Figures" / "Train loss")
+fig.savefig(save_path / "Figures" / "Loss")
 plt.close(fig)
-
-
-fig, axes = plt.subplots(2, 2, sharex=True, sharey=False, figsize=(14, 8))
-axes = axes.ravel()
-for ax, zone in zip(axes, zones):
-    tmp = history.loc[zone, "val_loss"].unstack("Model")
-    ax.plot(tmp)
-    ax.legend(tmp.columns)
-    ax.set_title(zone)
-# fig.suptitle("Validation Loss")
-fig.supxlabel("Epoch")
-fig.supylabel("Loss")
-fig.savefig(save_path / "Figures" / "Validation loss")
-plt.close(fig)
-
-for model in history.index.unique("Model"):
-
-    fig, ax = plt.subplots()
-    for zone in zones:
-        l = ax.plot(history.loc[zone, model]["loss"], label=f"{zone}")
-        ax.plot(
-            history.loc[zone, model]["val_loss"],
-            color=l[0].get_color(),
-            linestyle="--",
-        )
-    ax.plot(0, 1, color="black", label="Train loss")
-    ax.plot(0, 1, color="black", linestyle="--", label="Validation loss")
-    ax.legend()
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("Loss")
-
-    # ax.set_title(model)
-    fig.savefig(save_path / "Figures" / f"{model} History")
-    plt.close(fig)
 
 # %% Model examples
 
 zone = "DK1-onshore"
 obs = observations.loc[zone]
-period = [np.datetime64("2023-10-17"), np.datetime64("2023-11-02")]
+# period = [np.datetime64("2023-10-17"), np.datetime64("2023-11-02")]
+period = [np.datetime64("2024-01-19"), np.datetime64("2024-01-25")]
 
 for model in models:
 
@@ -89,97 +75,73 @@ for model in models:
     nplt.band_plot(df.index, df["0.50"], df["0.05"], df["0.95"], ax=ax)
     ax.scatter(obs.index, obs, color="black", s=1)
     ax.set_xlim(period)
-    ax.set_ylim([-10, 3800])
+    # ax.set_ylim([-10, 3800])
+    ax.tick_params(axis="x", labelrotation=10)
+    ax.set_ylabel("Production (MWh)")
     # ax.set_title(model)
 
     fig.savefig(save_path / "Figures" / f"{model} example")
     plt.close(fig)
 
-
-# %% NABQR vs feature
-
-zone = "DK1-onshore"
-obs = observations.loc[zone]
-period = [np.datetime64("2024-06-23"), np.datetime64("2024-07-08")]
-
-
-df_nabqr = preds.loc[zone, "NABQR - TAQR"]
-df_feature = preds.loc[zone, "Feature"]
+# compare feature and ensemble
 
 fig, ax = plt.subplots()
 
-nplt.band_plot(df_nabqr.index, df_nabqr["0.50"], df_nabqr["0.05"], df_nabqr["0.95"], ax=ax, label="NABQR - TAQR")
 nplt.band_plot(
-    df_feature.index, df_feature["0.50"], df_feature["0.05"], df_feature["0.95"], ax=ax, label="Feature Model"
+    observations.loc[zone].index,
+    *preds.loc[idx[zone, "Feature"], ["0.50", "0.05", "0.95"]].values.T,
+    ax=ax,
+    alpha=0.2,
+    label="Feature",
 )
-ax.scatter(obs.index, obs, color="black", s=1)
-ax.set_xlim(period)
-# ax.set_title(model)
-ax.legend()
-
-fig.savefig(save_path / "Figures" / "Model Comparison")
-plt.close(fig)
-
-# %% DK2 offshore
-
-zone = "DK2-offshore"
-obs = observations.loc[zone]
-period = [np.datetime64("2023-03-08"), np.datetime64("2023-03-16")]
-
-
-df_simple = preds.loc[zone, "Simple"]
-df_feature = preds.loc[zone, "Feature"]
-
-fig, ax = plt.subplots()
-
-nplt.band_plot(df_simple.index, df_simple["0.50"], df_simple["0.05"], df_simple["0.95"], ax=ax, label="Simple model")
 nplt.band_plot(
-    df_feature.index, df_feature["0.50"], df_feature["0.05"], df_feature["0.95"], ax=ax, label="Feature Model"
+    observations.loc[zone].index,
+    *preds.loc[idx[zone, "Ensemble"], ["0.50", "0.05", "0.95"]].values.T,
+    ax=ax,
+    alpha=0.2,
+    label="Ensemble",
 )
-ax.scatter(obs.index, obs, color="black", s=1)
-ax.set_xlim(period)
-# ax.set_title(model)
-ax.legend()
 
-fig.savefig(save_path / "Figures" / "DK2-offshore")
+
+ax.scatter(observations.loc[zone].index, observations.loc[zone], color="black", label="Observation")
+ax.set_xlim(period)
+ax.legend()
+ax.set_ylabel("Production(MWh)")
+ax.tick_params(axis="x", labelrotation=10)
+fig.savefig(save_path / "Figures" / "Comparison")
 plt.close(fig)
 
 # %% pseudo residuals
 
 
-for (zone, model), df in resids.groupby(level=(0, 1)):
-    print(zone, model)
+for zone, df in resids.groupby(level=0):
+    print(zone)
     figs, _ = nplt.diagnostic_plots(
-        df["Normal"], df.index.get_level_values(2), save_path=save_path / "Figures" / "Residuals" / f"{zone} - {model}"
+        df.values, df.index.get_level_values(1), save_path / "Figures" / "Residuals" / f"{zone}", closefig=True
     )
-    figs[0].suptitle(f"{zone} - {model}")
-    plt.close(figs[0])
 
-for model, df in resids.groupby(level=(1)):
-    print(model)
-    figs, _ = nplt.diagnostic_plots(
-        df["Normal"], df.index.get_level_values(2), save_path=save_path / "Figures" / "Residuals" / f"{model}"
-    )
-    figs[0].suptitle(model)
-    plt.close(figs[0])
 
 # %% scores
 
-
 # geometric mean
-avg_score = pd.concat([np.exp(np.log(scores).groupby(level=1).mean())], keys=["Geometric mean score"])
+avg_score = np.exp(np.log(scores).groupby(level=1).mean())
+avg_score = pd.concat([avg_score], keys=["Geometric mean score"])
 scores = pd.concat([scores, avg_score])
 
-min_score = scores.groupby(level=0).transform("min")
-gmap = np.log(scores / min_score)
-min_format = np.where(scores == min_score, "font-weight: bold; font-style: italic", "")
-min_format = pd.DataFrame(min_format, index=scores.index, columns=scores.columns)
+ratios = scores.div(scores.groupby(level=0).min(), axis=0, level=0)
+form = np.full(ratios.shape, "", dtype=object)
+
+form[ratios == 1] += "font-weight: bold; font-style: italic; "
+form[ratios <= 1.1] += "background-color: #269BE3; "
+# form[ratios > 1.1] += "background-color: #FF5C61; "
+
+form = pd.DataFrame(form, index=scores.index, columns=scores.columns)
+
 
 (
-    scores.style.format(precision=2)
-    .background_gradient(cmap="Greens_r", vmin=0, vmax=np.log(2), axis=None, gmap=gmap)
+    scores.style.format(precision=2, na_rep="")
     .apply(
-        lambda x: min_format,
+        lambda x: form,
         axis=None,
     )
     .to_latex(
@@ -187,15 +149,16 @@ min_format = pd.DataFrame(min_format, index=scores.index, columns=scores.columns
         hrules=True,
         clines="skip-last;data",
         convert_css=True,
-        position="ht",
+        position="htb",
         position_float="centering",
-        multicol_align="r",
+        multicol_align="c",
         multirow_align="r",
+        label="tab:basis:scores",
         caption=(
             "Scores for the estimated marginal distributions. "
-            "Performance seem to be similar for the 3 complicated models across zones, with a slight edge to TAQR. "
-            "For DK2 there seems to be a more complicated dynamic which the simpler models cannot capture fully.",
-            "Scores of the estimated marginal distributions",
+            "Bold score indicated the minimum scores for the the zone and measure. "
+            "Blue scores are within 10\% of the minimum score",
+            "Marginal distribution scores.",
         ),
     )
 )

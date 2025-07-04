@@ -22,6 +22,7 @@ rng = np.random.default_rng(42)
 
 plt.close("all")
 
+
 # %% distance metrics
 
 dist1 = stats.beta(2, 2, loc=-3, scale=6)
@@ -80,7 +81,7 @@ plt.close(fig)
 
 
 wasser_table = pd.concat([wasser_table], axis=1, keys=["p"])
-wasser_table.style.to_latex(
+wasser_table.style.format(precision=2).to_latex(
     save_path / "Tables" / "Wasserstein.tex",
     hrules=True,
     clines="skip-last;data",
@@ -135,8 +136,8 @@ scores = np.array(
         nabqra.scoring.continous_kl_divergence(dist2.pdf, dist1.pdf, (-3, 3), limit=200)[0],
     ]
 )
-kl_table = pd.DataFrame(np.atleast_2d(scores), index=["Divergence"], columns=["$KL(G||F)$", "$KL(F||G)$"])
-kl_table.style.to_latex(
+kl_table = pd.DataFrame(np.atleast_2d(scores), columns=["$KL(F||G)$", "$KL(G||F)$"])
+kl_table.style.format(precision=2).hide(axis="index").to_latex(
     save_path / "Tables" / "Kullback-Leibler.tex",
     hrules=True,
     clines="skip-last;data",
@@ -255,11 +256,10 @@ plt.close(fig)
 # %% Vars
 
 process = pd.read_pickle(load_path / "process.pkl")
-diffs = pd.read_pickle(load_path / "diffs.pkl")
 scores = pd.read_pickle(load_path / "scores.pkl")
-ediff = np.load(load_path / "ediff.npy")
+comp = np.load(load_path / "weight comp.npz")
 
-
+# %%
 fig, ax = plt.subplots()
 
 nabqra.plotting.band_plot(np.arange(24), *process.loc["AR(2) model"].values.T, ax=ax, label="AR(2) model")
@@ -271,75 +271,88 @@ ax.legend()
 fig.savefig(save_path / "Figures" / "Process")
 plt.close(fig)
 
+
+e_correct = np.ma.masked_equal(comp["e_correct"], 0.0, copy=False)
+e_wrong = np.ma.masked_equal(comp["e_wrong"], 0.0, copy=False)
+
+vmin = min(e_wrong.min(), e_correct.min())
+vmax = min(e_wrong.max(), e_correct.max())
 fig, axes = plt.subplots(1, 2, layout="constrained", sharex=True, sharey=True)
-im = axes[0].imshow(ediff[0, :, :], vmin=0, vmax=1.7)
-im = axes[1].imshow(ediff[1, :, :], vmin=0, vmax=1.7)
+im = axes[0].imshow(comp["e_correct"], vmin=vmin)
+axes[1].imshow(comp["e_wrong"], vmax=vmax)
 axes[0].set_title("AR(2) model")
 axes[1].set_title("AR(1) model")
 
-axes[0].set_xlabel("$t_j$")
-axes[0].set_ylabel("$t_i$")
 fig.colorbar(im, ax=axes)
-
-fig.savefig(save_path / "Figures" / "VarS Expected")
+fig.savefig(save_path / "Figures" / "Variogram")
 plt.close(fig)
+
 
 fig, ax = plt.subplots()
 sns.kdeplot(
-    scores.loc["AR(2) model"].melt(var_name="p"),
+    (scores).melt(var_name="Order"),
     x="value",
-    hue="p",
+    hue="Order",
     fill=True,
+    common_grid=False,
+    common_norm=False,
     ax=ax,
 )
 ax.set_xlabel("VarS")
+ax.set_xlim([0, 5])
 fig.savefig(save_path / "Figures" / "Vars dist")
 plt.close(fig)
 
-# fig, ax = plt.subplots()
-# sns.kdeplot(
-#     scores.loc["AR(1) model"].melt(var_name="p"),
-#     x="value",
-#     hue="p",
-#     fill=True,
-#     ax=ax,
-# )
-# ax.set_xlabel("VarS")
-# fig.savefig(save_path / "Figures" / "Vars dist")
 
-fig, ax = plt.subplots()
-sns.kdeplot(
-    (scores.loc["AR(1) model"] - scores.loc["AR(2) model"]).melt(var_name="p"),
-    x="value",
-    hue="p",
-    fill=True,
-    ax=ax,
-)
-ax.set_xlabel("VarS")
-ax.vlines(0, 0, 6.5, color="black", linestyle="--")
-fig.savefig(save_path / "Figures" / "Model dist")
+w1 = np.ma.masked_equal(comp["weight"], 0.0, copy=False)
+
+fig, ax = plt.subplots(1)
+im = ax.imshow(w1 / w1.max(), vmin=0.01, vmax=1, norm="log")
+fig.colorbar(im)
+fig.savefig(save_path / "Figures" / "Weight")
 plt.close(fig)
 
-vars_precision = pd.concat(
-    [(scores.loc["AR(1) model"] >= scores.loc["AR(2) model"]).mean().to_frame("Precison").T], keys=["p"], axis=1
+s1 = np.ma.masked_equal(comp["diffs"].mean(axis=0), 0.0, copy=False)
+s2 = np.ma.masked_equal(comp["diffs_weight"].mean(axis=0), 0.0, copy=False)
+
+
+vmin = min(s1.min(), s2.min())
+vmax = max(s1.max(), s2.max())
+
+fig, axes = plt.subplots(1, 2, layout="constrained", sharex=True, sharey=True)
+im = axes[0].imshow(s1 / s1.max(), vmin=0.01, vmax=1, norm="log")
+axes[1].imshow(s2 / s2.max(), vmin=0.01, vmax=1, norm="log")
+fig.colorbar(im, ax=axes)
+fig.savefig(save_path / "Figures" / "score diff")
+plt.close(fig)
+
+diff_scores = pd.DataFrame({"Equal": comp["scores"], "Inverse Distance": comp["scores_weight"]}).melt(
+    var_name="Weight", value_name="Score Difference"
 )
 
-vars_precision.style.format(precision=2).to_latex(
-    save_path / "Tables" / "VarS precision.tex",
+
+fig, ax = plt.subplots()
+sns.kdeplot(diff_scores, x="Score Difference", hue="Weight", fill=True, ax=ax)
+fig.savefig(save_path / "Figures" / "diff dist")
+plt.close(fig)
+
+diff_scores.set_index("Weight", append=True).groupby("Weight").mean()
+
+(diff_scores.set_index("Weight", append=True) > 0).groupby(level=1).mean().T.style.format("{:.2f}").to_latex(
+    save_path / "Tables" / "acceptance rate.tex",
     hrules=True,
     clines="skip-last;data",
     convert_css=True,
-    position="ht",
+    position="htb",
     position_float="centering",
     multicol_align="c",
     multirow_align="r",
-    label="tab:evaluation:VarS",
+    label="tab:evaluation:precision",
     caption=(
-        "Acceptance rate for the correct model",
-        "VarS acceptance rate",
+        "Precision of the \gls{vars}, for the equally weighted score and the score weighted with inverse distance",
+        "Precision by Weight",
     ),
 )
-
 
 # %% Expected score as a function of variance
 

@@ -68,18 +68,18 @@ models = [
         ).get_config(),
         "opt_args": {"learning_rate": 1e-3},
         "data_args": {"reverse": True, "timesteps": (0,), "preprocessing": MinMaxScaler(feature_range=(-1, 1))},
-        "loader_args": {"batch_size": 24 * 1, "shuffle": False},
+        "loader_args": {"batch_size": 24 * 7, "shuffle": False},
     },
     {
         "name": "Feature",
         "model_config": keras.Sequential(
             [
                 keras.Input(shape=(49, ensembles.shape[-1])),
-                keras.layers.GaussianNoise(0.03),
-                keras.layers.Dense(3, activation="selu"),
-                keras.layers.Dense(10, activation="selu"),
-                keras.layers.LSTM(10),
-                keras.layers.Dense(10, activation="selu"),
+                keras.layers.GaussianDropout(1 / 100),
+                keras.layers.Dense(5, activation="selu"),
+                keras.layers.Dense(5, activation="selu"),
+                keras.layers.LSTM(5),
+                keras.layers.Dense(5, activation="selu"),
                 keras.layers.Dense(5, activation="selu"),
                 keras.layers.Dense(len(parameters["Quantiles"])),
             ]
@@ -104,6 +104,7 @@ for zone, vals in product(zones, models):
 
     name = vals["name"]
     print(zone, name)
+
     # for the test data  i need to pass in slightly more data
     # this is because the first index is where it is possible to get the  full data
     # ie if the models needs data from lag 48 the first data point is at 48

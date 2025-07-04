@@ -27,7 +27,7 @@ def plot_pacf(values, ax, alpha=0.05, nlags=48):
 
 
 def plot_uniform_histogram(uniform_residuals, ax):
-    ax.hist(uniform_residuals, density=True)
+    ax.hist(uniform_residuals, density=True, bins="auto")
     ax.hlines(1, 0, 1, colors="black", linestyles="dashed")
     ax.set_xlabel("u")
     ax.set_ylabel("Density")
@@ -37,7 +37,7 @@ def plot_normal_histogram(normal_residuals, ax):
     xgrid = np.linspace(min(normal_residuals), max(normal_residuals), 1000)
     kde = stats.gaussian_kde(normal_residuals)
 
-    ax.hist(normal_residuals, density=True, bins=20)
+    ax.hist(normal_residuals, density=True, bins="auto")
     ax.plot(xgrid, kde(xgrid), label="KDE")
     ax.plot(xgrid, stats.norm.pdf(xgrid), color="black", linestyle="dashed", label="Standard Normal PDF")
 

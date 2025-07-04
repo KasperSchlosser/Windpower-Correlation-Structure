@@ -4,8 +4,9 @@ import tomllib
 import pandas as pd
 import numpy as np
 import nabqra
+import statsmodels.api as sm
 
-from pandas import IndexSlice as idx
+from nabqra.scoring import calc_scores
 
 
 PATH = pathlib.Path.cwd().parents[1]
@@ -21,105 +22,258 @@ with open(PATH / "Settings" / "parameters.toml", "rb") as f:
 
 basis_quantiles = pd.read_pickle(load_path / "Basis quantiles.pkl")
 obs = pd.read_pickle(load_path / ".." / "Data" / "cleaned_observations.pkl")
+pseudores = pd.read_pickle(load_path / "Basis residuals.pkl")
 
 index = obs.index.unique(1)
 train_index = index[: parameters["train_size"]]
 test_index = index[parameters["train_size"] :]
 
-
-# %% models
-
-global_params = {"n_sim": 250, "horizon": 24, "alpha": 0.1, "sided": 2}
-
-# maybe ARMA need to just be made separately
-# "ARMA": {
-#     "basis": "actuals",
-#     "quantile model": None,
-#     "quantile params": {},
-#     "model": nabqra.correlation.sarma,
-#     "params": {"order": (4, 0, 0), "trend": "c"},
-# },
-models = {
-    "Ensemble": {"basis": "Ensemble", "model": nabqra.correlation.dummy, "params": {}},
-    "Feature": {"basis": "Feature", "model": nabqra.correlation.dummy, "params": {}},
-    "Feature +  SARMA": {
-        "basis": "Feature",
-        "model": nabqra.correlation.sarma,
-        "params": {"order": (1, 0, 1), "seasonal_order": (1, 0, 1, 24)},
-    },
-}
+rng = np.random.RandomState(42)
 
 
-# %% make data frames
+def params_to_pd(res):
+    data = np.array(res.summary().tables[1].data)
+    return pd.DataFrame(data=data[1:, 1:], index=data[1:, 0], columns=data[0, 1:])[["coef", "std err"]]
 
-forecast_res = pd.DataFrame(
-    index=pd.MultiIndex.from_product((zones, models.keys(), test_index), names=["Zone", "Model", "Time"]),
-    columns=pd.MultiIndex.from_product((["Original", "CDF", "Normal"], ["Observation", "Estimate", "Lower", "Upper"])),
+
+# %%
+# selection = pd.DataFrame(
+#     index=pd.MultiIndex.from_product(
+#         [zones, range(4), range(4), range(3), range(3)], names=["Zone", "p", "q", "P", "Q"]
+#     ),
+#     columns=["AIC", "BIC"],
+#     dtype=np.float64(),
+# )
+
+selection = pd.DataFrame(
+    index=pd.MultiIndex.from_product(
+        [zones, range(4), range(4), range(3), range(3)], names=["Zone", "p", "q", "P", "Q"]
+    ),
+    columns=["AIC", "BIC"],
+    dtype=np.float64(),
+)
+
+
+for (zone, p, q, P, Q), _ in selection.iterrows():
+
+    print(zone, p, q, P, Q)
+
+    model = sm.tsa.SARIMAX(
+        pseudores.loc[zone, train_index].reset_index(drop=True),
+        order=(p, 0, q),
+        seasonal_order=(P, 0, Q, 24),
+    )
+    res = model.fit(disp=False)
+
+    selection.loc[(zone, p, q, P, Q), "AIC"] = res.aic
+    selection.loc[(zone, p, q, P, Q), "BIC"] = res.bic
+
+
+# %% data up to time t-12 forecast t to t+24
+
+n_sim = 1000
+window = 24
+offset = 12
+
+forecasts = pd.DataFrame(
+    columns=["Estimate", "Lower interval", "Upper interval"],
+    index=pd.MultiIndex.from_product([zones, test_index]),
+    dtype=np.float64,
+)
+# studentized residual
+residuals = pd.Series(
+    index=pd.MultiIndex.from_product([zones, train_index]),
+    dtype=np.float64,
 )
 scores = pd.DataFrame(
-    index=forecast_res.droplevel(2).index.unique(), columns=["MAE", "RMSE", "CRPS", "VarS"], dtype=np.float64
+    columns=["MAE", "RMSE", "CRPS", "VarS"],
+    index=zones,
+    dtype=np.float64,
 )
-resid_onestep = pd.DataFrame(
-    index=pd.MultiIndex.from_product((zones, test_index), names=["Zone", "Time"]), columns=["resid"]
-)
 
 
-def params_to_pd(summary):
-    data = np.array(summary.tables[1].data)
-    return pd.DataFrame(data=data[1:, 1:], index=data[1:, 0], columns=data[0, 1:])
+params = []
+variograms = {}
 
+train_size = parameters["train_size"]
+for zone in zones:
 
-model_params = {}
+    print(zone)
 
-for zone, model in scores.index.unique():
-    print(zone, model)
-
-    params = models[model]
-    actuals = obs.loc[zone]
-    est_quantiles = nabqra.misc.fix_quantiles(basis_quantiles.loc[zone, params["basis"]], *zone_lims[zone])
-
-    quantile_model = nabqra.quantiles.spline_model(quantiles, *zone_lims[zone])
-    correlation_model = params["model"](**params["params"], **global_params)
-    correlation_model_onestep = params["model"](**params["params"], horizon=1, n_sim=3)
-
-    pipeline = nabqra.pipeline.pipeline(correlation_model, quantile_model)
-
-    res = pipeline.run(est_quantiles, actuals, train_index)
-
-    forecast_res.loc[zone, model, :] = res[0].values[len(train_index) :, :]
-
-    est = res[0].loc[test_index, idx["Original", "Estimate"]]
-    sim = res[1].loc[test_index, "Original"]
-
-    scores.loc[idx[zone, model], "MAE":"VarS"] = nabqra.scoring.calc_scores(
-        actuals.loc[test_index].values, est.values, sim.values
+    simulation = pd.DataFrame(
+        columns=["Simulation" + str(x + 1) for x in range(n_sim)],
+        index=test_index,
+        dtype=np.float64,
     )
 
-    if hasattr(pipeline.correlation_model, "get_params"):
+    forecast = pd.DataFrame(
+        columns=["Estimate", "Lower interval", "Upper interval"],
+        index=test_index,
+        dtype=np.float64,
+    )
 
-        # get params and onestep
-        model_params[zone] = params_to_pd(pipeline.correlation_model.get_params())
+    orders = selection["BIC"].groupby(level=0).idxmin()[zone]
+    order = (orders[1], 0, orders[2])
+    seasonal_order = (orders[3], 0, orders[4], 24)
 
-        tmp = correlation_model.modelres.apply(res[0]["Normal"]["Observation"], refit=False)
+    res = sm.tsa.SARIMAX(pseudores.loc[zone, train_index].values, order=order, seasonal_order=seasonal_order).fit()
+    params.append(params_to_pd(res))
+    residuals[zone] = res.standardized_forecasts_error
 
-        # studentized residuals
-        resid_onestep.loc[idx[zone, :]] = tmp.resid[test_index].values / np.sqrt(
-            pipeline.correlation_model.modelres.params[-1]
-        )
+    res = res.apply(pseudores.loc[zone, index[: train_size - offset]].values, refit=False)
 
-model_params = pd.concat(model_params, names=["Zone"])
-model_params = model_params.stack().unstack(level=1)
+    for i in range(train_size, len(index), window):
+
+        end = i + window
+        if i + window >= len(index):
+            end = len(index)
+
+        save_idx = index[i:end]
+        # n = len(save_idx)
+        tmp = res.get_forecast(steps=len(save_idx) + offset)
+
+        forecast.loc[save_idx, "Estimate"] = tmp.predicted_mean[offset:]
+        forecast.loc[save_idx, ["Lower interval", "Upper interval"]] = tmp.conf_int(alpha=0.1)[offset:, :]
+
+        simulation.loc[save_idx, :] = res.simulate(
+            nsimulations=len(save_idx) + offset,
+            repetitions=n_sim,
+            anchor="end",
+            random_state=rng,
+        ).squeeze()[offset:, :]
+
+        res = res.extend(pseudores.loc[zone, index[i - offset : end - offset]].values)
+
+    model = nabqra.quantiles.spline_model(quantiles, *zone_lims[zone])
+    quan = nabqra.misc.fix_quantiles(basis_quantiles.loc[zone, "Feature", test_index, :], *zone_lims[zone])
+
+    forecast = model.back_transform(quan.values, forecast.values)[0]
+    simulation = model.back_transform(quan.values, simulation)[0]
+
+    scores.loc[zone, :] = calc_scores(obs.loc[zone, test_index].values, forecast[:, 0], simulation)
+    forecasts.loc[zone, :, :] = forecast
+
+    tmp = nabqra.scoring.variogram_distribution(simulation)
+    variograms[f"{zone} expected variogram"] = tmp[0]
+    variograms[f"{zone} std variogram"] = tmp[1]
+
+params = pd.concat(params, axis=1, keys=zones)
 
 
 # %% save data
-forecast_res.to_pickle(save_path / "Forecast.pkl")
-forecast_res.to_csv(save_path / "Forecast.csv")
 
-resid_onestep.to_pickle(save_path / "Residuals onestep.pkl")
-resid_onestep.to_csv(save_path / "Residuals onestep.csv")
+selection.to_pickle(save_path / "model selection.pkl")
+selection.to_csv(save_path / "model selection.csv")
 
-scores.to_pickle(save_path / "Forecast scores.pkl")
-scores.to_csv(save_path / "Forecast scores.csv")
+forecasts.to_pickle(save_path / "Sarma forecasts.pkl")
+forecasts.to_csv(save_path / "Sarma forecasts.csv")
 
-model_params.to_pickle(save_path / "Model Params.pkl")
-model_params.to_csv(save_path / "Model Params.csv")
+scores.to_pickle(save_path / "Sarma scores.pkl")
+scores.to_csv(save_path / "Sarma scores.csv")
+
+residuals.to_pickle(save_path / "Sarma Residuals.pkl")
+residuals.to_csv(save_path / "Sarma Residuals.csv")
+
+params.to_pickle(save_path / "Params.pkl")
+params.to_csv(save_path / "Params.csv")
+
+np.savez(save_path / "Variograms", **variograms)
+
+
+# %% with no extra data
+
+n_sim = 1000
+window = 24
+offset = 12
+
+forecasts = pd.DataFrame(
+    columns=["Estimate", "Lower interval", "Upper interval"],
+    index=pd.MultiIndex.from_product([zones, test_index]),
+    dtype=np.float64,
+)
+
+scores = pd.DataFrame(
+    columns=["MAE", "RMSE", "CRPS", "VarS"],
+    index=zones,
+    dtype=np.float64,
+)
+
+
+# params = []
+variograms = {}
+
+train_size = parameters["train_size"]
+for zone in zones:
+
+    print(zone)
+
+    simulation = pd.DataFrame(
+        columns=["Simulation" + str(x + 1) for x in range(n_sim)],
+        index=test_index,
+        dtype=np.float64,
+    )
+
+    forecast = pd.DataFrame(
+        columns=["Estimate", "Lower interval", "Upper interval"],
+        index=test_index,
+        dtype=np.float64,
+    )
+
+    orders = selection["BIC"].groupby(level=0).idxmin()[zone]
+    order = (orders[1], 0, orders[2])
+    seasonal_order = (orders[3], 0, orders[4], 24)
+
+    print("fit")
+    res = sm.tsa.SARIMAX(pseudores.loc[zone, train_index].values, order=order, seasonal_order=seasonal_order).fit()
+    # params.append(params_to_pd(res))
+    # residuals[zone] = res.standardized_forecasts_error
+
+    # res = res.apply(pseudores.loc[zone, index[: train_size - offset]].values, refit=False)
+
+    print("sim")
+    tmp = res.get_forecast(steps=window * 1000)
+    sim = res.simulate(nsimulations=window * 1000, repetitions=n_sim, anchor="start", random_state=rng).squeeze()
+
+    print("yes")
+    for i in range(train_size, len(index), window):
+
+        end = i + window
+        if i + window >= len(index):
+            end = len(index)
+
+        save_idx = index[i:end]
+        # n = len(save_idx)
+
+        forecast.loc[save_idx, "Estimate"] = tmp.predicted_mean[-len(save_idx) :]
+        forecast.loc[save_idx, ["Lower interval", "Upper interval"]] = tmp.conf_int(alpha=0.1)[-len(save_idx) :, :]
+
+        simulation.loc[save_idx, :] = sim[-len(save_idx) :, :]
+
+        # res = res.extend(pseudores.loc[zone, index[i - offset : end - offset]].values)
+    print("transform")
+    model = nabqra.quantiles.spline_model(quantiles, *zone_lims[zone])
+    quan = nabqra.misc.fix_quantiles(basis_quantiles.loc[zone, "Feature", test_index, :], *zone_lims[zone])
+
+    forecast = model.back_transform(quan.values, forecast.values)[0]
+    simulation = model.back_transform(quan.values, simulation)[0]
+
+    scores.loc[zone, :] = calc_scores(obs.loc[zone, test_index].values, forecast[:, 0], simulation)
+    forecasts.loc[zone, :, :] = forecast
+
+    tmp = nabqra.scoring.variogram_distribution(simulation)
+    variograms[f"{zone} expected variogram"] = tmp[0]
+    variograms[f"{zone} std variogram"] = tmp[1]
+
+# params = pd.concat(params, axis=1, keys=zones)
+
+
+# %%
+
+
+forecasts.to_pickle(save_path / "Sarma nodata forecasts.pkl")
+forecasts.to_csv(save_path / "Sarma nodata forecasts.csv")
+
+scores.to_pickle(save_path / "Sarma nodata scores.pkl")
+scores.to_csv(save_path / "Sarma nodata scores.csv")
+
+np.savez(save_path / "Variograms nodata", **variograms)

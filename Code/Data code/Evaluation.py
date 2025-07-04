@@ -50,7 +50,7 @@ def VarS(arr, mu, p):
 
     for i in range(n):
         for j in range(i + 1, n):
-            res[j, i] = res[i, j]
+            res[:, j, i] = res[:, i, j]
     # equal waight but no weight for diagonal
     return res / (n * (n - 1))
 
@@ -64,6 +64,8 @@ offset = 2
 ps = [0.5, 1, 2]
 quantiles = [0.5, 0.05, 0.95]
 
+
+# %%
 sims_correct = mod.simulate(params, 24, initial_state=[offset] + [0] * 1, repetitions=10000).squeeze()
 sims_wrong = mod.simulate(params_wrong, 24, initial_state=[offset] + [0] * 1, repetitions=10000).squeeze()
 
@@ -74,33 +76,72 @@ process = pd.concat(
     ],
     keys=["AR(2) model", "AR(1) model"],
 )
-diffs = pd.concat([pd.DataFrame(np.abs(sims_correct - sims_correct[0, :]).T ** p) for p in ps], keys=ps)
-
-ediff = np.stack([vars_e(sims_correct, 0.5), vars_e(sims_wrong, 0.5)])
-
-scores_correct = []
-scores_wrong = []
-
-for p in ps:
-    e_correct = vars_e(sims_correct, p)
-    e_wrong = vars_e(sims_wrong, p)
-    scores_correct.append(pd.Series(VarS(sims_correct, e_correct, p).sum(axis=(1, 2))) ** (1 / (2 * p)))
-    scores_wrong.append(pd.Series(VarS(sims_correct, e_wrong, p).sum(axis=(1, 2))) ** (1 / (2 * p)))
-
-scores_correct = pd.concat(scores_correct, keys=[str(x) for x in ps], axis=1)
-scores_wrong = pd.concat(scores_wrong, keys=[str(x) for x in ps], axis=1)
-
-scores = pd.concat([scores_correct, scores_wrong], keys=["AR(2) model", "AR(1) model"])
 
 
 # %%
 process.to_pickle(save_path / "process.pkl")
 process.to_csv(save_path / "process.csv")
 
-diffs.to_pickle(save_path / "diffs.pkl")
-diffs.to_csv(save_path / "diffs.csv")
 
-np.save(save_path / "ediff", ediff)
+# %% weight vs. no weight
 
-scores.to_pickle(save_path / "scores.pkl")
-scores.to_csv(save_path / "scores.csv")
+n = 24
+k = 100000
+sims_correct = mod.simulate(params, 10 * n, initial_state=[0] + [0] * 1, repetitions=k).squeeze()[9 * n :, :]
+sims_wrong = mod.simulate(params_wrong, 10 * n, initial_state=[0] + [0] * 1, repetitions=k).squeeze()[9 * n :, :]
+
+weight = np.zeros((n, n))
+for i in range(n):
+    for j in range(n):
+        if i == j:
+            continue
+        weight[i, j] = 1 / np.abs(i - j)
+        weight[j, i] = 1 / np.abs(i - j)
+
+weight = weight / weight.sum()
+
+# %% order and score
+
+scores_df = pd.DataFrame(columns=["0.5", "1", "2"], index=range(sims_correct.shape[1]), dtype=np.float64)
+
+
+for p in [0.5, 1, 2]:
+    evars = vars_e(sims_correct, p)
+    scores_df.loc[:, str(p)] = VarS(sims_correct, evars, p).sum(axis=(1, 2)) ** (1 / (2 * p))
+
+scores_df.to_pickle(save_path / "scores.pkl")
+scores_df.to_csv(save_path / "scores.csv")
+
+# %% weight and scores
+p = 0.5
+e_correct = vars_e(sims_correct, p)
+e_wrong = vars_e(sims_wrong, p)
+
+scores_correct = VarS(sims_correct, e_correct, p)
+scores_wrong = VarS(sims_correct, e_wrong, p)
+
+scores_correct_weight = VarS(sims_correct, e_correct, p) * (n * (n - 1)) * weight
+scores_wrong_weight = VarS(sims_correct, e_wrong, p) * (n * (n - 1)) * weight
+
+diffs = scores_wrong - scores_correct
+diffs_weight = scores_wrong_weight - scores_correct_weight
+
+scores = diffs.sum(axis=(1, 2))
+scores_weight = diffs_weight.sum(axis=(1, 2))
+
+print((scores < 0).sum(), (scores_weight < 0).sum())
+
+np.savez(
+    save_path / "weight comp.npz",
+    weight=weight,
+    scores_correct=scores_correct,
+    scores_wrong=scores_wrong,
+    scores_correct_weight=scores_correct_weight,
+    scores_wrong_weight=scores_wrong_weight,
+    diffs=diffs,
+    diffs_weight=diffs_weight,
+    scores=scores,
+    scores_weight=scores_weight,
+    e_correct=e_correct,
+    e_wrong=e_wrong,
+)

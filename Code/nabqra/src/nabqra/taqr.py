@@ -4,6 +4,7 @@ import numpy.linalg as la
 import time
 import scipy
 
+
 def run_taqr(corrected_ensembles, actuals, quantiles, n_init, n_full, n_in_X):
     """Wrapper function to run TAQR on corrected ensembles.
 
@@ -39,6 +40,56 @@ def run_taqr(corrected_ensembles, actuals, quantiles, n_init, n_full, n_in_X):
     for q in quantiles:
         print("Running TAQR for quantile: ", q)
         y_pred, y_actuals, BETA_q = one_step_quantile_prediction(
+            corrected_ensembles,
+            actuals,
+            n_init=n_init,
+            n_full=n_full,
+            quantile=q,
+            already_correct_size=True,
+            n_in_X=n_in_X,
+        )
+        taqr_results.append(y_pred)
+        actuals_output.append(y_actuals)
+        BETA_output.append(BETA_q)
+
+    return taqr_results, actuals_output[1], BETA_output
+
+
+def run_taqr_wrong(corrected_ensembles, actuals, quantiles, n_init, n_full, n_in_X):
+    """Wrapper function to run TAQR on corrected ensembles.
+
+    Parameters
+    ----------
+    corrected_ensembles : numpy.ndarray
+        Shape (n_timesteps, n_ensembles)
+    actuals : numpy.ndarray
+        Shape (n_timesteps,)
+    quantiles : list
+        Quantiles to predict
+    n_init : int
+        Number of initial timesteps for warm start
+    n_full : int
+        Total number of timesteps
+    n_in_X : int
+        Number of timesteps in design matrix
+
+    Returns
+    -------
+    list
+        TAQR results for each quantile
+    """
+    if type(actuals) == pd.Series or type(actuals) == pd.DataFrame:
+        actuals = actuals.to_numpy()
+        actuals[np.isnan(actuals)] = 0
+    else:
+        actuals[np.isnan(actuals)] = 0
+
+    taqr_results = []
+    actuals_output = []
+    BETA_output = []
+    for q in quantiles:
+        print("Running TAQR for quantile: ", q)
+        y_pred, y_actuals, BETA_q = one_step_quantile_prediction_wrong(
             corrected_ensembles,
             actuals,
             n_init=n_init,
@@ -183,6 +234,135 @@ def one_step_quantile_prediction(
     return y_pred, y_actual, BETA
 
 
+def one_step_quantile_prediction_wrong(
+    X_input,
+    Y_input,
+    n_init,
+    n_full,
+    quantile=0.5,
+    already_correct_size=False,
+    n_in_X=5000,
+    print_output=True,
+):
+    """Perform one-step quantile prediction using TAQR.
+
+    This function takes the entire training set and, based on the last n_init observations,
+    calculates residuals and coefficients for the quantile regression.
+
+    An easy wrapper function to run TAQR.
+
+    Parameters
+    ----------
+    X_input : numpy.ndarray or pd.DataFrame
+        Input features
+    Y_input : numpy.ndarray or pd.Series
+        Target values
+    n_init : int
+        Number of initial observations for warm start
+    n_full : int
+        Total number of observations to process
+    quantile : float, optional
+        Quantile level for prediction, by default 0.5
+    already_correct_size : bool, optional
+        Whether input data is already correctly sized, by default False
+    n_in_X : int, optional
+        Number of observations to include in design matrix, by default 5000
+
+    Returns
+    -------
+    tuple
+        (predictions, actual values, coefficients)
+    """
+    assert n_init <= n_full - 2, "n_init must be less two greater than n_full"
+
+    if type(X_input) == pd.DataFrame:
+        X_input = X_input.to_numpy()
+
+    if type(Y_input) == pd.Series or type(Y_input) == pd.DataFrame:
+        Y_input = Y_input.to_numpy()
+
+    n, m = X_input.shape
+    if print_output:
+        print("X_input shape: ", X_input.shape)
+
+    full_length, p = X_input.shape
+
+    X = X_input[:n_full, :].copy()
+    Y = Y_input[:n_full]
+
+    X_for_residuals = X[:n_init, :]
+    Y_for_residuals = Y[:n_init]
+
+    np.savetxt("X_for_residuals.csv", X_for_residuals, delimiter=",")
+    np.savetxt("Y_for_residuals.csv", Y_for_residuals, delimiter=",")
+
+    run_r_script_wrong("X_for_residuals.csv", "Y_for_residuals.csv", tau=quantile)
+
+    def ignore_first_column(s):
+        return float(s)
+
+    residuals = np.genfromtxt(
+        "rq_fit_residuals.csv",
+        delimiter=",",
+        skip_header=1,
+        usecols=(1,),
+        converters={0: ignore_first_column},
+    )
+
+    beta_init = np.genfromtxt(
+        "rq_fit_coefficients.csv",
+        delimiter=",",
+        skip_header=1,
+        usecols=(1,),
+        converters={0: ignore_first_column},
+    )
+
+    if print_output:
+        print("len of beta_init: ", len(beta_init))
+        print(
+            "There is: ",
+            sum(residuals == 0),
+            "zeros in residuals",
+            "and",
+            sum(abs(residuals) < 1e-8),
+            "close to zeroes",
+        )
+        print("p: ", p)
+
+    if len(beta_init) < p:
+        beta_init = np.append(beta_init, np.ones(p - len(beta_init)))
+    else:
+        beta_init = beta_init[:p]
+    r_init = set_n_closest_to_zero(arr=residuals, n=len(beta_init))
+
+    # if print_output:
+    #     print(sum(r_init == 0), "r_init zeros")
+
+    X_full = np.column_stack((X, Y, np.random.choice([1, 1], size=n_full)))
+    IX = np.arange(p)
+    Iy = p
+    Iex = p + 1
+    bins = np.array([-np.inf, np.inf])
+    tau = quantile
+    n_in_bin = int(1.0 * full_length)
+    if print_output:
+        print("n_in_bin", n_in_bin)
+
+    n_input = n_in_X
+    N, BETA, GAIN, Ld, Rny, Mx, Re, CON1, T = rq_simplex_final(
+        X_full, IX, Iy, Iex, r_init, beta_init, n_input, tau, bins, n_in_bin
+    )
+
+    y_pred = np.sum((X_input[(n_input + 2) : (n_full), :] * BETA[1:, :]), axis=1)
+    y_actual = Y_input[(n_input) : (n_full - 2)]
+    if print_output:
+        print("y_pred shape", y_pred.shape)
+        print("y_actual shape", y_actual.shape)
+
+    y_actual_quantile = np.quantile(y_actual, quantile)
+    return y_pred, y_actual, BETA
+
+
 def set_n_closest_to_zero(arr, n):
     """Set the n elements closest to zero in an array to zero.
 
@@ -235,16 +415,52 @@ def run_r_script(X_filename, Y_filename, tau):
 
     r_script = f"""
     options(warn = -1)
-    print("hello")
-    # library(onlineforecast) 
     library(quantreg) 
-    #library(readr) 
-    #library(SparseM)
     X_full <- read.csv("{X_filename}", header = FALSE) 
     y <- read.csv("{Y_filename}", header = FALSE) 
     names(y) = "y"
     X_full <- X_full
     data <- cbind(X_full, y) 
+    predictor_cols <- colnames(X_full) 
+    formula_string <- paste("y ~ 0+", paste(predictor_cols, collapse = " + ")) 
+    formula <- as.formula(formula_string) 
+    rq_fit <- rq(formula, tau = {tau}, data = data )
+    write.csv(rq_fit$coefficients, "rq_fit_coefficients.csv") 
+    write.csv(rq_fit$residuals, "rq_fit_residuals.csv") 
+    """
+
+    for line in r_script.strip().split("\n"):
+        process.stdin.write(line.encode("utf-8") + b"\n")
+
+    process.stdin.close()
+    process.stdout.read()
+    process.terminate()
+
+
+def run_r_script_wrong(X_filename, Y_filename, tau):
+    """Run R script for quantile regression.
+
+    Parameters
+    ----------
+    X_filename : str
+        Path to X data CSV file
+    Y_filename : str
+        Path to Y data CSV file
+    tau : float
+        Quantile level
+    """
+    import subprocess
+
+    process = subprocess.Popen(["R", "--vanilla"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
+    r_script = f"""
+    options(warn = -1)
+    library(quantreg) 
+    X_full <- read.csv("{X_filename}", header = FALSE) 
+    y <- read.csv("{Y_filename}", header = FALSE) 
+    names(y) = "y"
+    X_full <- head(X_full,500)
+    data <- cbind(X_full, head(y,500)) 
     predictor_cols <- colnames(X_full) 
     formula_string <- paste("y ~ 0+", paste(predictor_cols, collapse = " + ")) 
     formula <- as.formula(formula_string) 
