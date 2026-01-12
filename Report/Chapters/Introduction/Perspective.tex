@@ -1,0 +1,51 @@
+\section{Perspective}
+
+\subsection{Motivation}
+
+The main motivation for this thesis is to improve the forecasting of power production. and builds on the previous thesis by \textcite{jorgensenRealTimeForecastingRenewable2024}, and subsequent paper \textcite{jorgensenSequentialMethodsError2025}.
+
+The method, \gls{nabqr}, employed by \textcite{jorgensenSequentialMethodsError2025} showed (substantial) improvements in marginal forecasts when compared to the base forecast. the method  was also purely mathematical requiring no knowledge of the underlying system.
+
+The resulting forecast only gave marginal distributions, the full correlation structure was not determined.
+
+\subsection{Previous Work}
+As mentioned above, this thesis builds on the work of \textcite{jorgensenSequentialMethodsError2025}. Where a \gls{nn} was used to construct an basis for regression to improve forecasts. 
+
+This work in turn used the work of \textcite{mollerTimeadaptiveQuantileRegression2008}, who created \gls{taqr}. 
+Other works with similar purpose include \textcite{m2016a}, using stochastic differential equations to directly estimate the full distributional model of the forecast.
+
+Since 2020 huge advances have been made in the development of deep learning models, especially transformer models. These models seem to perform well, at the cost of requiring more data and computational resources. An overview of recent advances was made by \textcite{liDeepLearningModels2024}
+
+\subsection{Problem Statement, and work done}
+\label{introduction:problem}
+
+
+The main question of the thesis is formulated as
+
+\newtheoremstyle{problem}
+    {1em}
+    {1em}
+    {\itshape}
+    {}
+    {\centering \bfseries}
+    {:}
+    {1em}
+    {}
+\theoremstyle{problem}
+\newtheorem*{problem}{Problem Statement}
+ 
+\begin{problem}
+    Can the correlation structure of a time-varying process be determined through the pseudo-residuals of a marginal forecast. 
+\end{problem}
+
+This problem is investigated in \cref{autocorrelation}.
+
+To properly answer this question, methods of evaluation are needed. For one score, the \gls{vars}, work was done to investigate whether the standard setup was optimal, done in \cref{evaluation:vars}.
+
+During the course of the project, problems was found in the implementation. These problems had to be investigated and fixed for ensuring accurate results, \cref{basis}.
+
+Finally methods of monotone interpolation was needed to convert a set of estimated quantiles into a distribution, a short review was done in \cref{distributions}.
+
+
+
+

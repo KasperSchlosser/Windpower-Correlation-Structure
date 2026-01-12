@@ -1,0 +1,46 @@
+\subsection{Wasserstein Metric}
+\label{evaluation:distribution:wasserstein}
+
+
+The Wasserstein metric is a distance measure between two distributions. The metric arises through an optimal transportation problem. \cite{kolouri2017a}
+
+For distributions P and Q the Wasserstein metric of order p is optimal transport with cost $|x-y|^2$. 
+
+\begin{equation}
+    W_p(P,Q) = \min_{\gamma}\int_{\Omega \times \Omega} |x-y|^p d\gamma(x,y)
+\end{equation}
+
+More simply, the Wasserstein metric is the least amount of probablity that has to be move to transform the distribution P into the distribution Q.\cite{kolouri2017a}
+
+For one-dimensional distributions, the definition luckily simplifies to the $l_p$ distance between the quantile functions.
+\begin{equation}
+    W_p(P,Q) = \int_0^1 |P^{-1}(x) - Q^{-1}(x)|^p dx
+\end{equation}
+
+The Wasserstein metric is a metric for $p \in [1;\infty]$ for $p < 1$ the function no longer satisfies the triangle inequality and thus not a metric. However, it can still be used as a score.
+
+For the two example distributions the Wasserstein distance between them can be seen in \cref{tab:evaluation:wasserstein}.
+
+\input{Results/Evaluation/Tables/Wasserstein}
+
+The order, $p$ determines what is emphasised by the score, in the limit score is integral of the indicator function 
+
+\begin{equation}
+    \lim_{p \to 0}W_p(P,Q) = \int_0^1 \mathbb{I}_{P^{-1}(x) \neq Q^{-1}(x)}(x) dx
+\end{equation}
+
+While for higher orders only the larger difference contribute to the score. an illustration can be seen in \cref{fig:evaluation:wasserstein-order}
+
+\begin{figure}[htb]
+    \centering
+    \caption[Wasserstein Order]{The Wasserstein score's order, p, prioritizes various distances, highlighting larger discrepancies more significantly.}
+    \includegraphics[width=1\linewidth]{Results/Evaluation/Figures/Wasserstein Distance.pdf}
+    \label{fig:evaluation:wasserstein-order}
+\end{figure}
+
+
+
+
+
+
+

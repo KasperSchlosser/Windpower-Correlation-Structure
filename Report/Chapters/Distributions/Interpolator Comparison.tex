@@ -1,0 +1,61 @@
+\section{Interpolator Comparison}
+\label{distributions:comparison}
+
+To compare the three interpolation methods, 4 test distributions were selected.
+
+\begin{itemize}
+    \item Uniform distributions $[-6;6]$
+    \item Standard normal distribution $N(0,1^2)$
+    \item Student's t distribution $t(2)$
+    \item Beta distribution $Beta(5,3)$ and adjusted to $[-6,6]$
+\end{itemize}
+The scaling of the distribution was chosen mainly for visualisation purposes.
+A plot of the \gls{cdf}s can be seen in \cref{fig:distributions:comparison-cdf}, and the corresponding \gls{pdf} in \cref{fig:distribution:fittedpdf}
+
+\begin{figure}[htb]
+    \centering
+    \caption[CDF of the Test Distributions]{The \gls{cdf} of the four test distributions: a uniform distribution $U(-6,6)$; a standard normal distribution $N(0,1^2)$; a Student's t distribution $t(2)$; and a beta distribution $Beta(5,3)$, adjusted to the interval (-6,6).}
+    \includegraphics[width=1\linewidth]{Results/Distribution/Figures/Comparison cdf.pdf}
+    \label{fig:distributions:comparison-cdf}
+\end{figure}
+
+\begin{figure}[htb]
+    \centering
+    \caption[PDF of the Test Distributions]{The \gls{pdf} of the four test distributions: a uniform distribution $U(-6,6)$; a standard normal distribution $N(0,1^2)$; a Student's t distribution $t(2)$; and a beta distribution $Beta(5,3)$, adjusted to the interval (-6,6).}
+    \includegraphics[width=1\linewidth]{Results/Distribution/Figures/Comparison pdf.pdf}
+    \label{fig:distributions:comparison-pdf}
+\end{figure}
+
+The distributions were chosen to have a mix of heavy- and light-tailed, the t- and normal-distributions, respectively, a skewed distribution, the beta distribution, and the uniform distribution as a very simple test distribution.
+
+For interpolation, the 25\%, 50\%, and 75\% quantile of the distributions were chosen as interpolation points. To limit the interpolations, points -6 and 6 were chosen as the 0\% and 100\% quantiles, respectively, for all distributions. 
+
+The actual values can be found in \cref{tab:distributions:testinterpolation}
+
+\input{Results/Distribution/Tables/test quantiles}
+
+\newpage
+\subsection{Comparison}
+
+After interpolation, the Wasserstein distance with $p = 1$ and $p = 2$ and \gls{kl} between the interpolated distribution and the true distributions were calculated.
+
+The results can be seen in \cref{tab:distributions:testres}, while the actual interpolations are visualised in \cref{appendix:distributions}.
+
+\input{Results/Distribution/Tables/scores}
+
+Unsurprisingly, the piecewise linear interpolation perfectly matched the uniform distribution. Slightly more interesting is that the spline interpolation also matched the uniform distribution perfectly.
+
+We can see that except for the beta distribution the spline models is the best model. 
+
+The difference in the beta distribution seems to come from the fact that the right tail of the distribution almost follows a quadratic curve, see \cref{fig:distributions:beta-ex-pdf}, and the quadratic tail model scores better.
+
+The linear model with a quadratic tail term performs quite well. The result would indicate that when the main challenge is in estimate tail distribution, there is little difference between the two methods.
+
+The spline interpolations however has slightly better scores, and the continuous \gls{pdf} it produces is a desireable advantage. The spline model is therefor used in this project
+
+\begin{figure}[hbt]
+    \centering
+    \caption[PDF of the Beta Distribution]{The \gls{pdf} of the $Beta(5,3)$ along with the interpolated distributions.}
+    \includegraphics[width=1\linewidth]{Results/Distribution/Figures/Comparison pdf.pdf}
+    \label{fig:distributions:beta-ex-pdf}
+\end{figure}

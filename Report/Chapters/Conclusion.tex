@@ -1,0 +1,50 @@
+\chapter{Summary}
+
+\subsection*{VarS}
+
+In \cref{evaluation} the example presented showed that the standard method of calculating \gls{vars}, using the inverse distance as a weight, is not ideal.
+
+In the example the score went from being able to chose the correct model in 82\% of the time to 77\%. A 7\% reduction in performance.
+
+More work should be done to figure out if a good general weighting exist. What weights would be good to use in different situations.
+
+\subsection*{NABQR \& TAQR}
+
+In \cref{basis} problems in the current implementation of \gls{taqr} and \gls{nabqr} was investigated and fixed. Resulting in better, and more reliable forecast. A problem affecting the run time of the code was however not fixed.
+
+The large improvements in scores, as found by \textcite{jorgensenSequentialMethodsError2025} was also found \cref{basis}. The large improvements seemed to only be in DK2, where the base forecasts were less reliable and had clear failure modes. 
+
+\gls{taqr} in general perform equivalently or better than both the ensembles and the \gls{nn} models in all cases. This could indicate there is some shift in the underlying system which the other models do not capture.
+
+The good performance of the simple model would also indicate that the forecast do not require a complex setup to model. A simpler method than a \gls{nn} could used, for example a \gls{pca} or \gls{ica}.
+
+\subsection*{Correlation Structure}
+
+In \cref{autocorrelation} the new method of modelling autocorrelation was presented. The Results presented in \cref{tab:autocorrelation:scores} suggests the method is very capable of capturing the correlation structure of the system of improvements of $17\%-19\%$ in \gls{vars} score compared to the base marignal forecast.
+
+The results also shows there is some improvements to be made just by incorporating previous observations, this could be done in the marginal forecast.
+
+Taking the results \cref{basis,autocorrelation} together also imply that the \gls{nabqr} method can be a very simple, fast and powerful method of modelling time-series. Though some fine-tuning are still needed.
+
+\subsection*{Final Remarks}
+
+An original idea of the thesis was to use \gls{sde} to model the correlation structure in original space, but due to the good results found using the simple \gls{sarma} method this was abandoned.
+
+The advantage of \gls{sde}s would be that can model the correlation in original space allowing for easy interpretation. The obvious interpretation of the \gls{sarma} parameters are hard to find.
+
+To conclude on the on the main problem as presented in \cref{introduction:problem}. Modelling correlation structures through pseudo-residuals seem very promising and allows leveraging simple well-known methods in more complex situations. 
+
+\newpage
+\subsection{Further Work}
+
+As mentioned in \cref{basis:taqr} sproblems still exists in the \gls{taqr} Which were not fixed. As the results in \cref{tab:basis:scores} indicate, the algorithm has the potential to improve the forecast further.
+
+The complex \gls{nn} basis for regression is possibly not necessary as indicated by the simple model.
+
+If the basis was replaces be a simpler method, it would result in a complete method consisting of simple basis + \gls{taqr} + spline interpolation + \gls{sarma}. A potentially very fast and general method of modelling time-series.
+
+Other \gls{nn} architectures exists for forecasting time series, which were not explored in this thesis. It would be prudent to compare the method presented here to the state of the art models.
+
+More work could be put into finding a distribution from the estimated quantiles. Higher order monotone splines could be implemented, or parametric distributions could be used that could alleviate some the the problems in the tail distributions.
+
+Finally the methods here only looked at each zone in isolation. As noted in \cref{data:production} there is a definition correlation between zones. Modelling all zones together could easily give better results.

@@ -1,0 +1,56 @@
+\chapter{Data}
+\label{data}
+\addcontentsline{lof}{chapter}{Data}
+\addcontentsline{lot}{chapter}{Data}
+
+This thesis builds on the research of \textcite{jorgensenSequentialMethodsError2025}, using the same data set.
+
+The entire data set spans an approximately three-year period from January 2022 to mid October 2024 with the specific dates given in \cref{tab:datadate}
+
+\begin{table}[htb]
+    \centering
+    \caption[Data Period]{Data Period}
+    \label{tab:datadate}
+    \begin{tabular}{@{}ll@{}}
+    \toprule
+    Start date & End date \\ \midrule
+    2022-01-01 00:00:00 & 2024-10-12 23:00:00 \\ \bottomrule
+    \end{tabular}
+\end{table}
+
+The data set consists of hourly observations of wind power production for each of the four zones, detailed in \cref{data:production}.
+
+In addition to observation data, the dataset also includes hourly production forecasts, again in each of the four zones. Forecast data is described in \cref{data:ensemble}.
+
+All data, both production and forecast, are given in MWh.
+
+In the thesis by \textcite{jorgensenRealTimeForecastingRenewable2024} a larger effort was made to deal with two things in the dataset. 
+
+Firstly, due to agreements between Denmark and other countries, Danish producers are sometime paid to shutdown production, known as curtailment.
+
+As changes the agreements this is curtailment is expected to be less of a problem in the future. Periods with curtailment was therefore removed as these periods would not be comparable with future behaviour.
+
+Secondly, The forecast for DK2-offshore had some obvious failure modes, described in \cref{data:forecastfailure}, These periods was also removed.
+
+For this project it was decided not to remove these periods, Firstly, Removing the data would mean there would be jumps in observations which would interfere with learning the correlations structure.
+
+Secondly it was decided that removing the failures in DK2-offshore would artificially improve the performance of the base forecast. The forecasts should be evaluated on the actual performance, not the ideal performance.
+
+
+\subsection*{Data Alignment}
+
+One small detail is the alignment of the data.
+The forecast data were provided with time zone information, while the production data were not. To align, the time-zone was simply dropped from the ensemble data, which is what seemed to have been done in \textcite{jorgensenSequentialMethodsError2025}
+
+\newpage
+\input{Chapters/Data/Powerproduction}
+\input{Chapters/Data/Forecast}
+\newpage
+\input{Chapters/Data/Datasplit}
+\input{Chapters/Data/Nomalisation}
+
+
+
+
+
+

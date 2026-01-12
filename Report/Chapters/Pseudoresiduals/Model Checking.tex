@@ -1,0 +1,82 @@
+\section{Model Checking}
+The first use case for pseudo-residuals is model checking. Test and heuristics for verifying a specific distribution can be hard to find. diagnostics of a model, in which each observation might follow completely different distributions, can be impossible.
+
+By contrast, tests and heuristics for verifying a normal distribution are well-known and plentiful, being taught in most introductory statistics courses, if slightly divisive w.r.t. actual normality tests.
+
+Pseudo-residuals can be used for model verification. If the model correctly specifies the true distribution, then the pseudo-residuals will follow a normal distribution.
+
+In this project, six plots will be used for model diagnostics; no tests are performed.
+
+\begin{itemize}
+    \item Histogram of normal pseudo-residuals
+    \item Histrogram of uniform pseudo-residuals
+    \item \gls{qq}-plot of normal pseudor-residuals
+    \item Outlier plot of normal pseudo-residuals
+    \item \gls{acf} plot of normal pseudo-residuals
+    \item \gls{pacf} plot of normal pseudo-residuals
+\end{itemize}
+
+To illustrate the methods an example is made. Two distributions are chosen, a standard normal distribution and a students t-distribution with two \gls{df}, shifted to a mean of 0.2.
+
+\begin{equation}
+\begin{split}
+    F_1 = N(0,1^2) \\
+    F_2 = t(2,\mu = 0.2)
+\end{split}
+\end{equation}
+
+1000 samples were drawn from the first distribution $x_i \sim F_1$. Diagnostic plots can be seen in \cref{fig:pseudo:correctmodel,fig:pseudo:wrongmodel} for the correctly specified and misspecified models, respectively.
+
+\subsection{Histograms and \gls{qq}-plot}
+The histograms, the two middle plots of \cref{fig:pseudo:correctmodel,fig:pseudo:wrongmodel}, and the \gls{qq} plot, the bottom right plot, gives a visual indication of the fit of the model.
+
+The uniform histogram should be a horizontal line, the normal histogram should follow the well-known bell-shaped curve, and the \gls{qq}-plot should be a straight line. \cite{zucchiniHiddenMarkovModels2017}
+
+\subsection{Outlier plot}
+
+The outlier plot, bottom left in \cref{fig:pseudo:correctmodel,fig:pseudo:wrongmodel}, is the normal pseudo-residuals plotted as a function of row/index with two sets of limits plotted. 
+
+Firstly this allows for for visual inspection of an error structure, as well as giving an indication of possible outliers.
+
+For a normal distribution 95\% of all observations are expected to lie within $\pm 1.96 = \Phi^{-1}(1 - \frac{0.05}{2})$, the green lines.
+if too many or few observations lie outside these bounds, it would indicate a model problem.
+
+Outliers are observations that are very unlikely according to the distribution, that is, observations that cannot be explained adequately by the model.
+The red limits of the can be taken as a guide for classifying outliers. Calculated as the 95\% interval of a standard normal distribution, the Bonferroni corrected for multiple comparisons. 
+\begin{equation}
+    \text{Outlier limit} = \pm \Phi^{-1}\left(1-\frac{0.05}{2 N}\right)
+\end{equation}
+
+where $N$ is the number of observations.
+
+In the example there are no observations outside the limits,
+
+\subsection{\gls{acf} and \gls{pacf}}
+
+The \gls{acf}, top left in \cref{fig:pseudo:correctmodel,fig:pseudo:wrongmodel}, shows the autocorrelation of the pseudo-residuals. The autocorrelation is defined as the correlation between pseudo-residuals at lag k. \cite{shumwayTimeSeriesAnalysis2017}
+
+\begin{equation}
+    \text{\gls{acf}}(k) = \text{corr}(z_i,z_{i+k})
+\end{equation}
+
+Similarly, the \gls{pacf}, top right plot of \cref{fig:pseudo:correctmodel,fig:pseudo:wrongmodel}, defines the correlation of pseudo-residuals with the linear dependence of previous observations removed\cite{shumwayTimeSeriesAnalysis2017}
+
+\begin{equation}
+    \text{\gls{pacf}(k)} = \text{corr}(z_i, z_{i+k} | z_{i+1}, z_{i+2}, \dots ,z_{i+k-1})
+\end{equation}
+
+For these plots to make sense, there has to be some structure, spatial, temporal, etc. to the index. In the example there is no autocorrelation, the samples were drawn independently.
+
+\begin{figure}[htb]
+    \centering
+    \caption[Pseudoresiduals - Correct model]{Diagnostic plots for the Pseudoresiduals of the correctly specified model $y \sim N(0,1^2)$}
+    \includegraphics[width=1\linewidth]{Results/Pseudoresiduals/Figures/normal resid.pdf}
+    \label{fig:pseudo:correctmodel}
+\end{figure}
+
+\begin{figure}[htb]
+    \centering
+    \caption[Pseudoresiduals - Mispecified model]{Diagnostic plots for the Pseudoresiduals of the mispecified model $y \sim t(2, \mu = 0.2)$}
+    \includegraphics[width=1\linewidth]{Results/Pseudoresiduals/Figures/t resid.pdf}
+    \label{fig:pseudo:wrongmodel}
+\end{figure}

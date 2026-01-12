@@ -1,0 +1,5 @@
+This Code is is taken from the package NABQR created by Bastian Schmidt Jørgensen
+https://github.com/bast0320/nabqr
+
+Use of this code is covered by the same license as the original license
+See "Lincense" file for details

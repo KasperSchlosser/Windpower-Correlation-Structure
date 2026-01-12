@@ -1,0 +1,26 @@
+\section{Tail Problem}
+\label{distributions:tail}
+
+A problem discovered during the course of the project was dubbed the "Tail problem". The prediction interval for some of the models became very "spiky" in a way that did not seem plausible.
+
+An simulated example can be seen in \cref{fig:distributions:tail}, where a time-varying process is forecasted.
+
+\begin{figure}[htb]
+    \centering
+    \caption[Tail Problem]{Example of the tail problem. Forecast distribution is interpolated with the bounds -10, and 10, interval is 90\%}
+    \includegraphics[width=1\linewidth]{Results/Distribution/Figures/Tail Problem.pdf}
+    \label{fig:distributions:tail}
+\end{figure}
+
+The problem is caused by the interpolation methods. The methods need some bounds, and these bounds might be quite far from the true value.
+
+Take a linear interpolation on the normal distribution, with the interpolation points $q_1, = F^{-1}(0.975) \approx 2 $ and and upper bounds set to $q_2 = F^{-1}(1) := 10$. The interpolated 99.9\% quantile would be 
+\begin{equation}
+    \hat{F}^{-1}(0.999) = \frac{q_2-q_1}{p_2-p_1}(0.999 - p_1) + p_2 \approx \frac{6-2}{1-0.975}(0.999 - 0.975) + 2 = 5.84
+\end{equation}
+
+However, the true quantile is $F^{-1}(0.999) \approx 3 $.
+
+The problem is most pronounced with linear interpolation; the other interpolation methods were investigated to help alleviate the problem. As can be seen in \cref{fig:distributions:tail} the higher order methods attenuate the problem but do not completely eliminate it.
+
+As this problem only affects the tail of the distribution, the actual impact of the problem should be minor and mostly be a visual nuisance.

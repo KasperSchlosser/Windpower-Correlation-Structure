@@ -1,0 +1,52 @@
+\subsection{Quantile Score}
+\label{evaluation:scores:qs}
+
+The \gls{qs}, very similar to the \gls{mae}, is calculated as the absolute error from the point forecast, but with a quantile and direction-dependent scaling.
+
+Other names for this score include: Quantile Skill Score, Tick loss, Check loss, Quantile Loss, and Pinball Loss.
+
+The \gls{qs} is defined by
+
+\begin{equation}
+    \text{QS}(y, \mu_\tau) = 
+    \begin{cases}
+    \tau (y - \mu_\tau ) & y \geq \mu_\tau\\
+    (1-\tau) (\mu_\tau-y) & y < \mu_\tau
+    \end{cases}
+    \label{eq:evaluation:qs}
+\end{equation}
+
+where $\tau \in [0;1]$ is the quantile and $\mu_\tau$ is the quantile value. \cite{gneitingStrictlyProperScoring2007}
+
+An alternative way to write \cref{eq:evaluation:qs} is as follows:
+
+\begin{equation}
+    \text{QS}(\mu_\tau, y) = \max(\tau (y - \mu_\tau),  (\tau-1) (y - \mu_\tau))
+\end{equation}
+
+This formulation is used for calculations as many numerical libraries are more optimised for the $\max$ function the an if statement.
+
+In \cref{fig:evaluation:qs} the score is illustrated; we can see that around the 50\% quantile the scores are approximately symmetric. However, for extreme quantiles, only values below the point estimate (above for the upper tail) contribute significantly to the score.
+
+\begin{figure}[ht]
+    \centering
+    \caption[QS example]{The \gls{qs} of an observation x, for the quantiles 0.1\%, 50\%, and 95\%. Based on the quantiles of the standard normal distribution}
+    \includegraphics[width=0.9\linewidth]{Results/Evaluation/Figures/QS.pdf}
+    \label{fig:evaluation:qs}
+\end{figure}
+
+\subsubsection{QS, MAE \& CRPS}
+
+The \gls{qs} is closely related to two other scores, namely the \gls{mae} and \gls{crps}. 
+
+One can quickly verify that the quantile score for the 50\% quantile is exactly half the \gls{mae}.
+
+\begin{equation}
+    QS(\mu_{0.5}, y) = \begin{cases}
+    0.5(y - \mu_\tau ) & y \geq \mu_\tau\\
+    0.5(\mu_\tau-y) & y < \mu_\tau
+    \end{cases} = 0.5 |y- \mu_\tau| = 0.5\text{MAE}(\mu_{0.5},y)
+\end{equation}
+
+The relation to \gls{crps} is less obvious, but it can be shown that for \gls{crps} evaluated using simulations \cref{eq:evaluation:crpssim} the \gls{crps} is proportional to the mean quantile loss \cite{brockerEvaluatingRawEnsembles2012}
+

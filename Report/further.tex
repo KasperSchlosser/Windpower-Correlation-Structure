@@ -1,0 +1,20 @@
+\chapter{Things that could be nice to investigate/workon}
+
+\section{Scores}
+
+As i have look into in \cref{forecasteval} (and a bit unhinged in \cref{variogram notes}) it seems like many of the scores used are sensitive to variance hetereogenity. it would be nice to look more at alternative scores that take into account that not all "windows" have the same variance.
+
+in the limit we can have a 50/50 chance of picking the wrong model.
+
+\section{NABQR}
+
+basic idea of nabqr seem to be (time-adaptive) quantile-regression on a reduced basis. Here an lstm-autoencode seem to be used. Would other methods work?. are the choosen net optimal? 
+
+
+
+https://robjhyndman.com/hyndsight/forecasting-within-limits/
+
+
+\section{Quintic spline}
+
+make python package of \textcite{luxAlgorithm1031MQSI2023}

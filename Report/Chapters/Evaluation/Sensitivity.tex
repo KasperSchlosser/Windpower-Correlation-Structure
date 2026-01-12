@@ -1,0 +1,19 @@
+\section{Score Sensitivity}
+\label{evaluation:sensitivity}
+
+One property of note is how most scores described in this chapter is sensitive to the variance of the underlying system.
+
+In general the more noisy, high variance, the underlying system the higher the variance of the scores, as can be seen in \cref{fig:evaluation:expectedscore}
+
+\begin{figure}[htb]
+    \centering
+    \caption[Variance of Scores]{Variance of scores as a function of the underlying system. Variances of the scores is estimated from 10000 simulations of 10 samples, $z_i \sim N(0, \sigma^2)$}
+    \includegraphics[width=0.9\linewidth]{Results/Evaluation/Figures/Score variance.pdf}
+    \label{fig:evaluation:expectedscore}
+\end{figure}
+
+\textcite{bolin2023a} notes how this can cause problems. When evaluating models by taking scores over different forecast windows. 
+
+Noise from periods with larger variance might completely drown out the signal in periods with low variance. Resulting a score being unable to differentiate between models.
+
+This thesis investigates forecasting of power production. a definite difference in variance exists both between and within days. It would be prudent to investigate this problem. but due to time constraints this is not done.

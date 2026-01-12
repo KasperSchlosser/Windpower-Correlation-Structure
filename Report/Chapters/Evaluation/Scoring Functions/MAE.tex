@@ -1,0 +1,17 @@
+\subsection{Mean Absolute Error}
+\label{evaluation:scores:mae}
+
+The \gls{mae} and the \gls{rmse} are two of the more well-known metrics, being defined from distance metrics on $R^n$.
+
+The \gls{mae} is defined by
+
+\begin{equation}
+    \text{MAE}(\bar{y}, Y) = \frac{\sum_i^N |y_i - \bar{y}|}{N}
+\end{equation}
+$Y$ is the observed values and $N$ is the number of observed values.
+
+The \gls{mae} is equally sensitive to each observation, regardless of the other observations.
+
+\begin{equation}
+    \frac{d\text{MAE}}{dy_i} = \pm\frac{1}{N}
+\end{equation}

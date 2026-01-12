@@ -1,0 +1,37 @@
+\section{Autoregressive Processes}
+\label{autocorrelation:sarma}
+
+A simple, useful and common method of modelling discrete-time data is the use of \gls{sarima} models, or related simpler models.
+
+As the name suggests, \gls{sarima} models are linear models, consisting of 4 possible parts, and \glsfirst{ar} part, a \glsfirst{ma} part, an integratiion(I9 part, and finally a Seasonal(s) part consisting of seasonal versions of the other terms.
+
+As the name is descriptive, simpler models are named likewise, a model with only moving average terms would be an \gls{ma} model, a \gls{arima} model would consist of an \gls{ar} part, an integrated term, and a \gls{ma} term, but no seasonal components.
+
+In the \gls{sarima} models, the state of the process for the next time-step is modelled as a linear function of the previous states and the previous error terms\cite{madsenTimeSeriesAnalysis2007}.
+
+\begin{equation}
+    y_t = \phi_1 y_{t-1} + \phi_2y_{t-2} + \dots + \epsilon_t + \theta_1\epsilon_{t-2} + \theta_2 \epsilon_{t-2} + \dots
+\end{equation}
+
+Where the error terms follow a normal distribution $\epsilon_i \sim N(0,\sigma^2)$ and \gls{iid}.
+
+The models are usually formulated in terms of lag polynomials:
+
+\begin{equation}
+    \phi(B)\Phi(B^s)\nabla^d\nabla^D_s y_t = \theta(B)\Theta(B^s) \epsilon_t
+\end{equation}
+
+Here $B$ is the the lag operator, and $\nabla$ is the differencing operator\cite{madsenTimeSeriesAnalysis2007}:
+
+\begin{align}
+    B^k y_t = y_{t-k} \\
+    \nabla^d = (1-B)^d
+\end{align}
+
+The model \gls{sarima} is described by the orders of the polynomial for a model:
+
+\[SARIMA((p,d,q),(P,D,Q,s)\]
+
+With p referring to the order of the \gls{ar} polynomial $\phi$, d the differencing term $\nabla^d$ and q the moving average polynomial $\theta$. P, D, and Q refer to the corresponding seasonal terms with seasonal period $s$. \cite{madsenTimeSeriesAnalysis2007}
+
+For this project the "SARIMAX" implementation of the statsmodels package was used \cite{seabold-proc-scipy-2010}. Which can specify all types of \gls{sarima} models

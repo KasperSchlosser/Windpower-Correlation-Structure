@@ -1,0 +1,35 @@
+\section{Data Normalization}
+
+Although not strictly necessary, normalising or scaling data have been noted to improve model convergence and in some cases performance. 
+
+The ensemble and input data were normalised differently and independently of each other.
+
+\subsection{Ensemble Normalisation}
+
+The ensemble data was normalized two different ways. As a comparison is made with the original \gls{nabqr} model, described in \cref{basis:nabqr}. For the training of this model, the ensembles where scaled to the range $[0;1]$ by the formula:
+
+\begin{equation}
+    \tilde{x}_{t} = \frac{x_{t} - \min_i x_{i} }{\max_i x_{i}-\min_i x_{i} }
+\end{equation}
+
+Where $\tilde{x}_{t}$ if the scaled data at time t and $x_t$ is the data a time t
+
+For other models, the ensemble data was scaled to the range $[-1;1]$ by the almost equivalent formula:
+
+\begin{equation}
+    \tilde{x}_{t} = 2 \frac{x_{t} - \min_i x_{i} }{\max_i x_{i}-\min_i x_{i} } - 1
+\end{equation}
+
+Each zone is scaled independently of each other, and the respective minimums and maximums were taken only over the train-set.
+
+\subsection{Observation Data}
+
+For the observation data. The scaled data would only be used intermittently, only used for calculating loss during model training to improve convergence. Less care was therefore put into choosing the scaling.
+
+The observation data was transformed using the formula:
+
+\begin{equation}
+    \tilde{y}_{t} = \frac{y_{t}}{ c_{\text{zone}}} 
+\end{equation}
+
+Where $y_t$ is the actual observation, $\tilde{y}_{t}$ is the scaled observation, and $ c_{\text{zone}}$ is a constant for each zone: $c_{DK1-offshore} = 1250$, $c_{DK1-onshore} = 3600$, $c_{DK2-offshore} = 100$, $c_{DK2-onshore} = 650$

@@ -1,0 +1,72 @@
+\section{Interpolators}
+\label{distribution:interpolators}
+
+For interpolating a distribution, the initial idea was to keep the method as simple as possible. This resulted in three methods.
+
+\begin{itemize}
+    \item Piecwise Linear Method
+    \item Piecewise Linear with a quadratic tail
+    \item Monotone Cubic spline
+\end{itemize}
+
+The initial preference was for a piecewise linear interpolation, but due to some undesirable behaviour, \cref{distributions:tail}, the other methods were included.
+
+To illustrate the interpolation methods, a Dweilbull distribution with shape parameter $c = 2$ is interpolated, and the interpolation points are given in \cref{tab:distributions:exampledata}
+
+\begin{figure}[htb]
+    \centering
+    \caption[CDF Interpolation]{Interpolation of the \gls{cdf} of a dweibull with shape parameter $c = 2$}
+    \includegraphics[width=0.9\linewidth]{Results/Distribution/Figures/Example cdf fit.pdf}
+    \label{fig:distributions:examplecdf}
+\end{figure}
+
+\begin{figure}[htb]
+    \centering
+    \caption[PDF Interpolation]{Interpolation of the \gls{pdf} of a dweibull with shape parameter $c = 2$}
+    \includegraphics[width=0.9\linewidth]{Results/Distribution/Figures/Example pdf fit.pdf}
+    \label{fig:distributions:examplepdf}
+\end{figure}
+
+\input{Results/Distribution/Tables/Example data}
+
+The interpolated \gls{cdf} can be seen in \cref{fig:distributions:examplecdf}, and the corresponding \gls{pdf} can be seen in \cref{fig:distributions:examplepdf}.
+
+\subsection{Notation}
+
+To improve the readability of the formulas in this section, some specific definitions are used.
+
+The general problem is fitting the function $F$ so that it exactly matches a given set of quantiles with their respective percentages, while ensure it is monotonically nondecreasing $F'(x) \geq 0 $
+
+Denote the vector of quantiles by $Q \in R^n $, the corresponding fraction by $P \in [0;1]^n$, $n$ being the number of pairs.
+
+\begin{equation}
+    Q = 
+    \begin{bmatrix}
+    q_1 \\ q_2 \\ \vdots \\ q_n
+    \end{bmatrix},\quad
+    P = 
+    \begin{bmatrix}
+    p_1 \\ p_2 \\ \vdots \\ p_n
+    \end{bmatrix},\quad F(q_i) = p_i
+\end{equation}
+
+The lagged difference of the quantiles and percentages are denoted by
+\begin{equation}
+    \Delta Q_i = q_{i+1}-q_i, \quad \Delta P_i = p_{i+1}-p_i
+\end{equation}
+
+The values and quantiles are assumed to be ordered and strictly increasing, with the first and last entries corresponding to the 0\% and 100\% quantiles.
+
+\begin{equation}
+\begin{split}
+    -\infty &< q_1 < q_2 < \dots < q_n < \infty \\
+    0 &= p_1 < p_2 < \dots < p_n = 1
+\end{split}
+\end{equation}
+
+The 0\% and 100\% quantiles will in most cases not correspond the the actual values of the distributions being interpolated.
+
+\input{Chapters/Distributions/Interpolators/Piecewise Linear}
+\input{Chapters/Distributions/Interpolators/Linear Quadratic Tail}
+\input{Chapters/Distributions/Interpolators/Monotone Cubic Spline}
+\input{Chapters/Distributions/Interpolators/Other}

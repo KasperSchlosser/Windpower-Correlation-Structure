@@ -1,0 +1,67 @@
+\section{Forecast Data}
+\label{data:ensemble}
+
+The previous work by \textcite{jorgensenSequentialMethodsError2025} improved on a base forecast, using purely mathematical mathematical methods. This thesis uses the same base forecast for comparison.
+
+The forecast is based on the 15-day ensemble weather forecast by \gls{ecmwf} This forecast consist a \gls{hpe}, the scenario deemed most likely to happen, along with alternative scenarios made by pertubing the inital condition of the \gls{hpe}.
+
+In the base forecast each \gls{ecmwf} ensemble is converted into a forecast power production. The exact method is proprietary, so the details of calculation are not provided, likewise the actual forecasts cannot be made available. 
+
+\subsection{ECMWF}
+
+The \gls{ecmwf} is a European organization that conducts research and offers weather forecasts, as detailed on their website. 
+
+\begin{displayquote}[\textcite{ECMWF2025}]
+We are both a research institute and a 24/7 operational service, producing global numerical weather predictions and other data for our Member and Co-operating States and the broader community.
+\end{displayquote}
+
+The 15-day ensemble forecast has a one-hour resolution up to 90 hours ahead. and a three-hour resolution from hour 90 to 144\cite{ECMWF2025}.
+
+Forecasts are made four times a day at 00:00, 06:00, 12:00, and 18:00, with the complete forecast for a given day available 12 hours before the day\cite{ECMWF2025}.
+
+\subsection{Ensemble Forecast}
+
+For the actual forecast data used, the data-sets, split equivalently to the observation data, was aquired from \textcite{jorgensenSequentialMethodsError2025}. No immediate problems seemed to exist in the data, no NaN values.
+
+While negative forecast are probably not ideal, given negative power is no possible, They do not represent any problem. a summary of the forecast data can be seen in \cref{tab:data:ensemble}
+
+\input{Results/Data/Tables/Ensemble Summary}
+
+An example of the ensemble forecasts can be see in \cref{fig:data:dk1onshore-ex,fig:data:dk1offshore-ex,fig:data:dk2onshore-ex,fig:data:dk2offshore-ex}. while the complete dataset can be seen in the appendix \cref{appendix:data}
+
+In general the offshore forecast tend to exhibit higher volatility.
+
+\subsection{Failure Modes}
+\label{data:forecastfailure}
+
+While no immediate problems was evident, One problem exists
+
+For DK2-offshore the forecasts has a failure mode where all ensembled collapse around a specific value, $\sim400$. Which can be seen in \cref{fig:data:dk2offshore-ex} around the 2023-10-20.
+
+\begin{figure}[htb]
+    \centering
+    \caption[DK1-onshore]{Example of thethe ensemble forecast in DK1-onshore}
+    \label{fig:data:dk1onshore-ex}
+    \includegraphics[width=0.9\linewidth]{Results/Data/Figures/DK1-onshore small.pdf}
+\end{figure}
+
+\begin{figure}[htb]
+    \centering
+    \caption[DK1-offshore]{Example of the the ensemble forecast in DK1-onshore}
+    \label{fig:data:dk1offshore-ex}
+    \includegraphics[width=0.9\linewidth]{Results/Data/Figures/DK1-offshore small.pdf}
+\end{figure}
+
+\begin{figure}[htb]
+    \centering
+    \caption[DK2-onshore]{Example of the the ensemble forecast in DK2-onshore}
+    \label{fig:data:dk2onshore-ex}
+    \includegraphics[width=0.9\linewidth]{Results/Data/Figures/DK2-onshore small.pdf}
+\end{figure}
+
+\begin{figure}[htb]
+    \centering
+    \caption[DK2-offshore]{Example of the ensemble forecast in DK2-offshore}
+    \label{fig:data:dk2offshore-ex}
+    \includegraphics[width=0.9\linewidth]{Results/Data/Figures/DK2-offshore small.pdf}
+\end{figure}

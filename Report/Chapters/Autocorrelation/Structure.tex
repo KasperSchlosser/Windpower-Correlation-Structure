@@ -1,0 +1,45 @@
+\chapter{Autocorrelation}
+\label{autocorrelation}
+\addcontentsline{lof}{chapter}{Autocorrelation}
+\addcontentsline{lot}{chapter}{Autocorrelation}
+
+For modelling the autocorrelation of the forecasts, the idea was to use the same principle as copulas, described in \cref{Pseudo}. 
+
+The forecast had varied and widely different marginal structures, making it unlikely that a theoretical model could be constructed to describe the process.
+
+In pseudo-residual space, all observations should ideally have the same normal distribution. 
+
+It should be possible to model the correlation in this space.
+
+As an example of the, an \gls{ar}(1) process has a normal marginal distribution. using the same principle of copulas the process can be translated to into any marginal distribution.
+
+In \cref{fig:autocorrelation:correlation} an \gls{ar}(1) process with autoregressive parameter $\alpha = 0.99$ and noise term $\sigma^2 = 1- \alpha^2 = 0.01 $ is simulated and transformed into a log-uniform distribution.
+
+It is still clear from the transformed process that some sort of correlation structure exists.
+
+From \cref{fig:autocorrelation:margin}, it is also clear that the marginal distribution is in fact a logarithmic uniform distribution.
+
+\begin{figure}[htb]
+    \centering
+    \caption[Marginal Distribution Example]{Marginal Distribution of the transformed process, Theoretical distribution is a log-uniform distribution with $a = 1$ and $b = 100$}
+    \includegraphics[width=1\linewidth]{Results/Pseudoresiduals/Figures/Marginal distribution.pdf}
+    \label{fig:autocorrelation:margin}
+\end{figure}
+
+\begin{figure}[htb]
+    \centering
+    \caption[Log-uniform Process]{Example process with a log-uniform marginal distribution.}
+    \includegraphics[width=1\linewidth]{Results/Pseudoresiduals/Figures/Correlation example.pdf}
+    \label{fig:autocorrelation:correlation}
+\end{figure}
+
+The ideas explored in this chapter seem to have some precedent; \textcite{wilsonCopulaProcesses2010} examined the construction of correlated processes using copulas on Gaussian processes. However, further literature is sparse. 
+
+\clearpage
+\input{Chapters/Autocorrelation/SARMA}
+\clearpage
+\input{Chapters/Autocorrelation/Correlation structure}
+\clearpage
+\input{Chapters/Autocorrelation/Pipeline}
+\clearpage
+\input{Chapters/Autocorrelation/Results}

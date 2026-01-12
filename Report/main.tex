@@ -1,0 +1,81 @@
+\documentclass[a4paper,twoside,11pt]{report} %openright
+\input{Setup/Statics.tex}
+\input{Setup/Preamble.tex}
+\input{Setup/Settings.tex}
+\input{glossary.tex}
+
+\begin{document}
+
+\pagenumbering{roman}
+\input{Frontmatter/Frontpage.tex}
+\pagecolor{white}
+\newgeometry{top=2.81cm, bottom=2.75cm, outer=2.5cm, inner=3.5cm}
+\pagestyle{empty}
+\cleardoublepage 
+\input{Frontmatter/Copyright.tex}
+\glsaddall[types={symbols}]
+\clearpage 
+\pagestyle{main}
+\input{Frontmatter/Preface.tex}
+\clearpage 
+\input{Frontmatter/Abstract.tex}
+\clearpage 
+\input{Frontmatter/Acknowledgements.tex}
+\cleardoublepage 
+\tableofcontents
+\clearpage
+\listoftables
+%\addcontentsline{toc}{section}{List of Tables}
+\clearpage
+\listoffigures
+%\addcontentsline{toc}{section}{List of Figures}
+\clearpage
+%\printglossary[type=main,style=altlist]
+%#\addcontentsline{toc}{section}{Glossary}
+%\clearpage
+\printglossary[type=\acronymtype]
+\addcontentsline{toc}{section}{Acronyms}
+\clearpage
+% \printglossary[type=symbols,style=altlist,title=Nomenclature]
+% \addcontentsline{toc}{section}{Nomenclature}
+\cleardoublepage 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\pagenumbering{arabic}
+\part*{Modelling Correlation Structures}
+\input{Chapters/Introduction/Structure}
+\cleardoublepage 
+\input{Chapters/Data/Structure}
+\cleardoublepage
+\input{Chapters/Evaluation/Structure}
+\cleardoublepage
+\input{Chapters/Distributions/Structure}
+\cleardoublepage
+\input{Chapters/Pseudoresiduals/Structure}
+\cleardoublepage 
+\input{Chapters/Basis/Structure}
+\cleardoublepage 
+\input{Chapters/Autocorrelation/Structure}
+\cleardoublepage
+\input{Chapters/Conclusion}
+\cleardoublepage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\printbibheading[heading=bibintoc]
+\printbibheading[heading=subbibliography,title={Literature}]
+\printbibliography[heading=none,nottype=online,nottype=misc,nottype=software]
+\printbibheading[heading=subbibliography,title={Other References}]
+\printbibliography[heading=none,filter=other]
+\cleardoublepage 
+\appendix
+% \addtocontents{toc}{\protect\newpage}
+% \addtocontents{lof}{\protect\newpage}
+\part*{Appendix}
+\input{Appendix/Extra Figures/Structure}
+% \clearpage
+% \input{Appendix/Supporting theory}
+\cleartoleftpage
+\input{Backmatter/Backpage.tex}
+
+\end{document}

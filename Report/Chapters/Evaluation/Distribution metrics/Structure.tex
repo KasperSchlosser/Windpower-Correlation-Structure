@@ -1,0 +1,26 @@
+\section{Distribution Distances}
+\label{evaluation:distribution}
+
+
+
+To illustrate the comparison methods described in this section, two beta distributions are used for example calculations, both distributions are scaled and translated to the interval $[-3;3]$
+
+\begin{equation}
+\begin{split}
+    F(x) = Beta(2,2; -3,3) \\
+    G(g) = Beta(7,11,-3;3)
+\end{split}
+\end{equation}
+
+The two distributions are visualised in \cref{fig:data:exampledist}.
+
+\begin{figure}[ht]
+    \centering
+    \caption[Example Distributions]{The two example distribution: A beta distribution with $\alpha = 2$, $\beta = 2$, and a beta distribution with $\alpha = 7$, $\beta = 11$. Both distributions scaled to the interval $[-3;3]$}
+    \includegraphics[width=1\linewidth]{Results/Evaluation/Figures/Example Dists.pdf}
+    \label{fig:data:exampledist}
+\end{figure}
+
+\input{Chapters/Evaluation/Distribution metrics/Wasserstein}
+\newpage
+\input{Chapters/Evaluation/Distribution metrics/Kullback}

@@ -1,0 +1,63 @@
+# This style is taken from the "science" style in the package SciencePlots
+# SciencePlots Created By John D Garrett (http://doi.org/10.5281/zenodo.4106649)
+                
+
+# Matplotlib style for scientific plotting
+# This is the base style for "SciencePlots"
+# see: https://github.com/garrettj403/SciencePlots
+
+
+# custom color
+# tried to make them contrasting and light
+# not good for colorblind
+axes.prop_cycle : cycler('color', ['269BE3', 'FF5C61', '5ecf19', 'FF8E47', 'FFC933', '9478BA'])
+
+# Set default figure size
+figure.figsize : 8, 4
+figure.autolayout: True # i like seeing a tight layout from the start
+
+# Set Grid
+axes.grid : True
+# axes.grid.which : both
+grid.alpha : 0.3
+
+# Set x axis
+xtick.direction : in
+xtick.major.size : 3
+xtick.major.width : 0.5
+xtick.minor.size : 1.5
+xtick.minor.width : 0.5
+xtick.minor.visible : True
+xtick.top : True
+
+# Set y axis
+ytick.direction : in
+ytick.major.size : 3
+ytick.major.width : 0.5
+ytick.minor.size : 1.5
+ytick.minor.width : 0.5
+ytick.minor.visible : True
+ytick.right : True
+
+# Set line widths
+axes.linewidth : 0.5
+grid.linewidth : 0.5
+lines.linewidth : 2
+lines.markersize : 2  
+
+# Remove legend frame
+legend.frameon : True
+
+# Always save as 'tight'
+savefig.bbox : tight
+savefig.pad_inches : 0.05
+savefig.format: pdf # save as pdf for scalable figures
+
+# Use serif fonts
+# font.serif : Times
+font.family : serif
+#mathtext.fontset : dejavuserif
+
+# Use LaTeX for math formatting
+#text.usetex : True
+#text.latex.preamble : \usepackage{amsmath} \usepackage{amssymb}

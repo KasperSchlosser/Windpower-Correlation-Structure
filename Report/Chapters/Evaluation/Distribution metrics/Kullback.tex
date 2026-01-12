@@ -1,0 +1,48 @@
+\subsection{Kullback-Liebler Divergence}
+\label{evaluation:distribution:kullback}
+
+\gls{kl} is a another metric of "distance" between two distributions.\gls{kl} is defined by \cite{lovricInternationalEncyclopediaStatistical2011}:
+
+\begin{equation}
+    D_{KL}(P||Q) = \int_\Omega p(x) \log\left(\frac{p(x)}{q(x)}\right) dx
+    \label{eq:evaluation:kl}
+\end{equation}
+
+One requirement here is that $q(x)$ has the same support as $p(x)$ or the integral becomes undefined.
+
+\gls{kl} is not symmetric, the direction of the scores is therefore important. Here the the divergence in \cref{eq:evaluation:kl} will be referred to as the divergence of $Q$ under $P$.
+
+Interpretation of the \gls{kl} is the expected excess information, or excess entropy, by assuming distribution $Q$ when the true distribution is $P$\cite{lovricInternationalEncyclopediaStatistical2011}.
+
+Defining information as:
+
+\begin{equation}
+    I_F(x) = -\ln(f(x))
+\end{equation}
+
+\cref{eq:evaluation:kl} can be written as
+
+\begin{equation}
+    D_{KL}(P||Q) = \int_\Omega p(x) (I_Q(x) - I_P(x)) dx = \expect[P]{I_Q(x)} - \expect[P]{I_P(x)}
+\end{equation}
+
+For the two example distributions, a graph the integrands of the \gls{kl} can be seen in \cref{fig:evaluation:klscore}, the divergence for $G$ under $F$ becomes rather larger in the right tail, while the divergence of $F$ under $G$ is relatively small over the entire distribution.
+
+\begin{figure}[htb]
+    \centering
+    \caption[KL-Divergence]{Expected excess information for the two example distributions}
+    \includegraphics[width=1\linewidth]{Results/Evaluation/Figures/KL-Divergence.pdf}
+    \label{fig:evaluation:klscore}
+\end{figure}
+
+The actual calculated divergences can be see in \cref{tab:evaluation:kl}
+\input{Results/Evaluation/Tables/Kullback-Leibler}
+
+As noted the divergence of $G$ under $F$ is larger than the reverse, by about a factor 3. The observation we would get from $F$ would be quite unlikely according to $G$. 
+
+
+
+
+
+
+

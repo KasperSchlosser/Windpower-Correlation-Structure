@@ -1,0 +1,28 @@
+\chapter{Distributions}
+\label{distributions}
+\addcontentsline{lof}{chapter}{Distributions}
+\addcontentsline{lot}{chapter}{Distributions}
+
+For analysing autocorrelation it is necessary to have a full continuous probability distribution available. The scoring rules described in \cref{evaluation:crps,evaluation:vars} require the complete distributions to be evaluated or at least the ability to simulate from the distribution
+
+For most of the methods used in this project the output is not a complete distribution but point estimates corresponding to quantiles of the estimated distribution.
+
+To remedy this, methods are needed to interpolate a distribution from quantiles.
+
+\subsection*{Approaches}
+Most of the literature seems to focus on fitting parametric distributions to empirical dates using least squares or maximum likelihood methods\cite{lindgren1993a}, or kernel methods to estimate a \gls{pdf} directly from data\cite{gramacki2018a}
+
+Both of these approaches require samples directly from the underlying distribution and are therefore not applicable to this project. 
+
+For fitting a parametric distribution to quantiles directly, there are fewer resources and most seem to rely on exactly matching quantiles, not always possible if number of quantiles > number of parameters\cite{delignette-mullerFitdistrplusPackageFitting2015}. Or using a weighted least squares fit \cite{FitDistributionQuantiles2018}.
+
+During the course of this project one other method was found, which seems promising \textcite{gabachovAnswerFitParametrized2018}, there is however a mistake in the method described making it unsuitable.
+
+For non-parametric interpolation, spline models seem the most popular. An additional challenge compared to normal interpolation is that and interpolated cdf has to be monotone. 
+
+\input{Chapters/Distributions/Interpolators/Structure}
+\newpage
+\input{Chapters/Distributions/Interpolator Comparison}
+\clearpage
+\input{Chapters/Distributions/Tail}
+

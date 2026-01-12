@@ -1,0 +1,77 @@
+\section{TAQR}
+\label{basis:taqr}
+
+\gls{taqr} is an algorithm developed by \textcite{mollerTimeadaptiveQuantileRegression2008}. 
+The algorithm  uses Quantile regression as robust method for estimating distributions, without having to make assumptions about the shape. 
+
+The time-adaptive aspect allows the model to automatically adapt to changes in the underlying system.
+
+The algorithm was used in \gls{nabqr} for several reasons\cite{jorgensenSequentialMethodsError2025}. Most importantly, the underlying system is expected to change continuously, for example, by increasing capacity, changing usage patterns, changes in the underlying infrastructure, and agreements\cite{lykketoftEnergiTilTiden}.
+
+The description given here is simplified, and many details are left out; for full details, see \textcite{mollerTimeadaptiveQuantileRegression2008}.
+
+\subsection{Quantile Regression}
+
+Quantile regression, similar to linear regression, allows for estimating the quantiles of a distribution as a linear model of the input variables.
+
+Unlike linear regression, no assumptions are made about the shape of the distribution.
+
+In quantile regression for a given quantile $\tau \in [0;1]$ and input $X_i = \begin{bmatrix} x_{i,1}, x_{i,2}, \dots, x_{i,k}\end{bmatrix}$, the estimated value corresponding to this quantile is modelled as\cite{mollerTimeadaptiveQuantileRegression2008}:
+
+\begin{equation}
+    q_\tau = X \beta
+\end{equation}
+
+The parameters $\beta$, are estimated by optimising the linear equation error function.
+\begin{equation}
+    \hat{\beta_\tau} = arg\min_\beta ||L_\tau(X\beta - Y)||_1
+    \label{eq:basis:linearopt}
+\end{equation}
+
+where the loss function
+
+\begin{equation}
+    L_\tau(e) = \begin{cases}
+        \tau e & e \geq 0 \\
+        (1-\tau)e & e < 0
+    \end{cases}
+\end{equation}
+is the same as the quantile loss described in \cref{evaluation:scores:qs}.
+
+A downside to quantile regression is the non-parametric-ness. In general, non-parametric methods have less power compared to parametric methods requiring more data to make comparable estimates to a parametric method\cite{whitleyStatisticsReview62002}.
+E.g. a normal distribution can in principle be completely described by 2 data points; this is not possible with quantile regression. 
+
+\subsubsection{Tail Estimation}
+
+Another known problem with quantile regression is the estimation of tail probabilities.
+
+As an example, estimating the minimum of a distribution, that is, $\tau= 0$. 
+\begin{equation}
+    arg\min_\beta ||L_0(X\beta - Y)||_1 = arg\min_\beta \sum (X_i\beta-y)^+
+\end{equation}
+
+which can be seen to be minimised if $y_i <=X_i \beta$ for all observations, i.e. the method will never estimate a value larger than the smallest observation.
+
+Due to the tails of a distribution, by definition, being rare, they can only be estimated if a large number of observations are available.
+
+\subsection{Solving the Optimisation Problem}
+
+The optimisation problem described in \cref{eq:basis:linearopt} can be formulated as a linear optimisation problem\cite{mollerTimeadaptiveQuantileRegression2008}:\footnote{Notation is here the same as used by \textcite{mollerTimeadaptiveQuantileRegression2008}, $r^+$ is a variable not the positive function}
+
+\begin{equation}
+\begin{aligned}
+arg\min_{r^+, r^-,\beta} \quad & \ \tau\bm{1}^Tr^+ + (1-\tau)\bm{1}^Tr^- \\
+\textrm{s.t.} \quad & X \beta + r^+ - r^- = y\\
+\end{aligned}
+\end{equation}
+
+To solve the optimisation problem \gls{taqr} uses a simplex algorithm.
+
+\subsection{Time Adaptation}
+
+For adding time adaptivity. the size of the design matrix $X$ was limited. When a new observation $X_t, y_t$ was added to the data, the oldest observation in $X,Y$ was dropped, and the optimisation algorithm was run again to find new parameters $\beta_\tau$.
+
+The choice of a simplex algorithm was to facilitate this adaptive step. The previous estimate would most likely be close to the new optimal point, and the simplex algorithm can converge quickly\cite{mollerTimeadaptiveQuantileRegression2008}.
+
+An additional detail is how the oldest observation was dropped. To ensure that all situations are adequately described, the design matrix $X$ and observations $Y$ were divided into bins.
+When a new observation was introduced, the corresponding bin was determined, and the oldest observation from the corresponding bin dropped.

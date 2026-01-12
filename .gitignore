@@ -1,0 +1,10 @@
+**/*pdf
+**/*pyc
+Code/**/*csv
+Results/*
+Data/*
+misc/*
+Settings/matplotlib/*
+.spyproject
+
+!Settings/matplotlib/matplotlibrc

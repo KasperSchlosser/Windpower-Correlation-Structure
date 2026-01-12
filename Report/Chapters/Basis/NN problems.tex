@@ -1,0 +1,41 @@
+\section{Problems in NABQR Architecture}
+
+Some problems in relating to the architecture of the \gls{nn} in \gls{nabqr} was also found during the course of the project.
+
+\subsection{Dead Outputs}
+
+One problem with the \gls{nn} used in the original implementation of \gls{nabqr} was that of dead outputs. That is, outputs which only estimate zeros no matter the input. \cite{jorgensenRealTimeForecastingRenewable2024}
+
+During the course of this project the cause of this problem was discovered.
+As negative power production, in the context of the data, was not possible, it was decided to use a \gls{relu} activation on the output layer of \gls{nn}.
+
+This ensured that the output was never negative but erased the gradient of any output neurons that happened to be zero.
+
+Training by backpropagation propagates the loss gradient back through the network, but with \gls{relu} activation, one can quickly determine that
+
+\begin{equation}
+    \frac{d}{dx}f(x)^+ =
+    \begin{cases}
+        f'(x) & f(x) \geq 0 \\
+        0 & f(x) < 0
+    \end{cases}
+\end{equation}
+
+Thus, any output that happens to be negative cannot be trained.
+
+As neural networks are initialised at random, some outputs will be negative by chance. During training, some of these dead outputs will, also by chance, suddenly "resurrect" and become trainable.
+
+This can be seen in the sudden drops in the loss curves reported by \textcite{jorgensenRealTimeForecastingRenewable2024}.
+
+To fix the problem, the \gls{relu} activation of the output was replaced by a leaky \gls{relu}.
+
+\subsection{Overfitting}
+
+Another problem with the \gls{nn} basis model of \gls{nabqr} found during this project was that of overfitting.
+
+The models used by \textcite{jorgensenSequentialMethodsError2025} did not attempt to control for over-fitting. It was probably not needed, as the loss was often dominated by dead neurons.
+
+After fixing dead neurones, it was noticed that the original \gls{nabqr} model had a tendency to overfit, as can be seen in \cref{fig:basis:loss}
+
+To address the problem of overfitting, an early stopping criterion was implemented. 
+The validation loss was tracked, and if there had been no improvements in validation loss for 20 epochs, the training would be stopped and the model from 20 epochs earlier was used.

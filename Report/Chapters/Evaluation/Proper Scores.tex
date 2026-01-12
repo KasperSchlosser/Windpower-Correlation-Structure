@@ -1,0 +1,95 @@
+\section{Proper Scoring Rules}
+\label{evaluation:properscores}
+
+A scoring rule is any functional that takes an estimated distribution, along with an observed outcome, and calculates a score\cite{gneitingStrictlyProperScoring2007}.
+
+According to \textcite{gneitingStrictlyProperScoring2007} a scoring rule is a functional 
+\begin{equation}
+    S: P \times \Omega \to \mathbb{R}
+\end{equation}
+Where $P$ a is a set of probability measures over the outcome space $\Omega$.
+
+A proper scoring rule, is any scoring rule where the true distributions have the lowest expected score.
+
+That is defining the expected score
+\begin{equation}
+    S(P,Q) = \mathbb{E}_{Q}[S(P,y)] = \int_\Omega S(P,\omega)dQ(\omega)
+    \label{eq:evaluation:properineq}
+\end{equation}
+
+a proper scoring rule fulfils 
+\begin{equation}
+    S(Q,Q) \leq S(P,Q)    
+\end{equation}
+
+Where $Q$, $P$ are probability measures over $\Omega$ \cite{gneitingStrictlyProperScoring2007}
+
+A scoring rule is strictly proper if the equality in \cref{eq:evaluation:properineq} only holds for the true distribution.
+
+\begin{equation}
+    S(Q,Q) = S(P,Q) \iff P = Q
+\end{equation}
+
+For this projekt two scoring functions will be used, the \gls{crps}, which is strictly proper, and the \gls{vars} which is proper. 
+
+\subsubsection{Orientation}
+
+Scores can be defined in both positive and negative orientation, considering the following equation.
+
+\begin{equation}
+    S(P,\omega) > S(Q,\omega)
+    \label{eq:evaluation:orientation}
+\end{equation}
+
+In positive orientation, higher scores are better, that is, \cref{eq:evaluation:orientation} indicates that P is better than Q.
+
+With negative orientation, lower scores are better; here \cref{eq:evaluation:orientation} would instead indicate that Q is the better model.
+
+In \textcite{gneitingStrictlyProperScoring2007} positive orientation is primarily used. Here, the negative orientation is used exclusively.
+
+\subsubsection{Averaging Scores}
+As most situations would require evaluating on more than a single observation, a method of aggrating scores is needed.
+
+The obvious choice is to take the mean.
+
+\begin{equation}
+    S(P,\{y_i\}) = \frac{\sum^N_i S(P,y_i)}{N}
+\end{equation}
+or potentially a weighted mean.
+
+\subsection{Continuous Ranked Probability Score}
+\label{evaluation:crps}
+
+The \gls{crps} is a strictly proper scoring rule. The base score is calculated as the integral of the absolute squared difference between the base distribution and the "observed" distribution of the point x.
+
+\gls{crps} is defined by:
+\begin{equation}
+    \text{CRPS}(F,y) =  \int_{-\infty}^{\infty} (F(x) - \mathbb{I}_{x \leq y}(x))^2 dx = \int_{-\infty}^y F(x)^2 dx+ \int_y^\infty(F(x)-1)^2dx
+\end{equation}
+
+The calculation of \gls{crps} is visualised in \cref{fig:evaluation:crps-obs}.
+
+\begin{figure}[htb]
+    \centering
+    \caption[CRPS Observed Distribution"]{The observed distribution for a data point, here $x = 0.5$. The resulting \gls{crps} scores is the colored area}
+    \includegraphics[width=1\linewidth]{Results/Evaluation/Figures/CRPS observation.pdf}
+    \label{fig:evaluation:crps-obs}
+\end{figure}
+
+There are two difficulties in calculating the \gls{crps}:
+
+\begin{enumerate}
+    \item The distribution $F$ does not always exist in closed form.
+    \item The integral can be intractable to calculate even numerically.
+\end{enumerate}
+
+As a solution two of these problems, \gls{crps} can also be formulated as\cite{gneitingStrictlyProperScoring2007}:
+
+\begin{equation}
+    CRPS(F,y) = \expect{|x_1-y|} - \frac{1}{2} \expect{|x_1-x_2|}
+    \label{eq:evaluation:crpssim}
+\end{equation}
+
+where $x_1, x_2 \sim F$ and \gls{iid}.
+
+This formulation allows calculation of \gls{crps} from simulation, as both terms $\expect[F]{|X_1-y|}$ and $\expect[F]{|X_1-X_2|}$ can be estimated by sampling from $F$.

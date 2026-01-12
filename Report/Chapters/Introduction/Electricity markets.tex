@@ -1,0 +1,91 @@
+\section{Electricity Markets}
+
+A very brief overview of electricity markets is presented here.
+
+In general, the electricity market is split into 3 markets: The day ahead market, intra-day market, and an imbalance market for ancillary services.
+
+Along the three markets, there also exist markets for forwards and futures, these are beyond the scope of this thesis.
+
+\subsection{TSO \& DSO}
+The energy grid generally consists of a high voltage transmission net, transporting the bulk energy from power plants to areas where it is needed, and a lower voltage distribution net, distributing it to end consumer in useful form.
+
+These entities are known as \gls{tso}. These companies are often state-owned. The entities operating the distribution net are known as \gls{dso}\cite{castro2024a}
+
+In Denmark, the sole \gls{tso} is Energinet\cite{Energinet2025}. There are several independent \gls{dso}, as can be seen in \cref{fig:dso}
+
+\subsection{Producers and Consumers}
+
+The electricity in the grid has to be generated and used for some purpose.
+Producers would be power plants that can generate electricity. Consumers would be either large companies that need power for production or companies that buy power for resale to retail-consumers. \cite{castro2024a}
+
+
+\subsection{Day-ahead Market}
+
+The day ahead market opens, as the name suggests, the day before. Here energy can be bought and sold for predefined blocks for the next day.
+
+At a certain point, the market closes, bids and offers are matched to find the market price. 
+After market prices are determined, a production schedule is published obligating all buyers and sellers to the scheduled production/consumption. \cite{castro2024a}
+
+The Danish day-ahead electricity market opens the day before and buy and sell orders can be made until 12:00 the day before. At 13:00, buy and sell orders are matched and the final production schedule is published \cite{energinetIntroduktiontilelmarkedet2019}
+
+\subsection{Intra-day Market}
+After the day-ahead market closes, the intra-day market opens. Here, it is possible to trade electricity up to just before the respective hours begin.
+
+This ensures that parties can react to changing circumstances, Like unexpected production stops, changing forecasts, etc. \cite{castro2024a}
+
+In Denmark, the intra-day market for a given hour opens at 15:00 the day before and closes one hour before the given hour \cite{energinetIntroduktiontilelmarkedet2019}
+
+\subsection{Ancillary/Imbalance market}
+
+In the ancillary market, balancing services are usually traded, e.g. reserve capacity and frequency stabilisation services. These ancillary services are not scheduled to be used but bought to activate should the need arise.\cite{castro2024a}
+
+Ancillary services is defined by the expect operating properties, with a major factor being response time.
+In Denmark is divided into six ancillary services:  FFR, FCR, FCR-D, FCR-N, aFRR, mFRR. With each zone only trading a subset of these:
+\begin{itemize}
+    \item DK1: FCR, aFFR \& mFRR
+    \item DK2: FFR, FCR-D, FCR-N, aFFR, mFFR
+\end{itemize}
+
+\subsection{Market resolution}
+
+Both day-ahead markets usually operate in specific time blocks, usually in one-hour blocks.
+
+This is currently the case in Denmark; there is an ongoing process to move to 15-minute intervals, the full implementation is currently planned for the later part of 2025\cite{Transition15minuteMarket}.
+
+\subsection{Market zones in Denmark}
+
+The energy markets are usually divided into zones, bidding zone, where trades occur freely. In Denmark, there are currently two zones, DK1 and DK2, and can be seen in \cref{fig:zones}.
+
+\begin{itemize}
+    \item DK1: Jylland and Fyn
+    \item DK2: Sjælland, Lolland-Falster, and Bornholm
+\end{itemize}
+
+\begin{figure}[htb]
+    \centering
+    \caption[Danish Bidding Zones]{Bidding zones in Denmark. Image taken from \textcite{Systemydelser} }
+    \includegraphics[width=0.4\linewidth]{Pictures/dk1dk2.png}
+    \label{fig:zones}
+\end{figure}
+
+With DK 1 being synchronised to the continental European power grid (Germany, France, etc.), and DK 2 being synchronised to the Nordic power grid (Sweden, Norway, Finland)\cite{BornholmBliverDanmarks}.
+
+\subsubsection{DK 3}
+At the time of writing, Denmark has two separate price zones. However, a change in this structure is planned for the end of 2025.
+
+The island of Bornholm, quite far from "mainland" Denmark, is planned to be split into a separate zone, once construction an energy island at the coast is completed.\cite{BornholmBliverDanmarks}.
+
+Completion is expected around the end of 2025 and the price areas would then consist of:
+
+\begin{itemize}
+    \item DK 1: Jylland \& Fyn
+    \item DK 2: Sjælland \& Lolland-Falster
+    \item DK 3: Bornholm
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    \caption[DSO in Denmark]{Overview of \gls{dso} in Denmark, figure taken from \textcite{ManedligOgArlig2024}}
+    \includegraphics[width=1\linewidth]{Pictures/elnetgraenser_jun2024.pdf}
+    \label{fig:dso}
+\end{figure}

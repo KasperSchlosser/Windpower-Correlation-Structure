@@ -1,0 +1,70 @@
+\section{Distribution of Power Production}
+
+An example of the estimated distribution for the feature model can be seen in \cref{fig:basis:feature-example}. Examples for all models can be seen in \cref{appendix:basis:examples}
+
+\begin{figure}[htb]
+    \centering
+    \caption[Feature Example]{Example of the marginal distribution from the feature model forecast. Shaded area is the 90\% confidence interval}
+    \includegraphics[width=0.9\linewidth]{Results/Basis/Figures/Feature example.pdf}
+    \label{fig:basis:feature-example}
+\end{figure}
+
+In general, the feature, \gls{nabqr} and \gls{taqr} models seem to predict similarly, with the \gls{taqr} model giving narrower intervals at times.
+
+This could indicate that the dynamics of the system has changed over time and that the \gls{taqr} model is able to handle this.
+
+The ensemble forecasts are markedly narrower.
+
+while the ensembles seem to follow the general structure of the observations. It is clear that they do not represent the full distribution of possible outcomes very well; see \cref{fig:basis:comparison}.
+
+\begin{figure}[htb]
+    \centering
+    \caption[Feature-Ensemble Comparison]{Example of the marginal forecast from the feature model. Shaded area is the 90\% confidence interval}
+    \includegraphics[width=0.9\linewidth]{Results/Basis/Figures/Comparison.pdf}
+    \label{fig:basis:comparison}
+\end{figure}
+
+\newpage
+\subsection{Scores}
+
+For \gls{mae} and \gls{rmse} the estimated median was used as the point forecast.
+
+For \gls{crps} and \gls{vars}, 1000 samples were generated from the distributions and used to calculate the scores.
+
+The resulting scores can be seen in \cref{tab:basis:scores}. 
+
+\input{Results/Basis/Tables/Basis scores}
+
+For DK1, the scores are generally close, except for \gls{vars}, where the ensemble forecasts are better. 
+The better\gls{vars} scores indicate that the ensemble forecast captures the dynamics of the system. 
+
+
+The tendency of \gls{nabqr} to overfit is also evident. Even with the early stopping criteria used to control for it. In DK1-onshore \gls{nabqr} performed worse than all other models in all scores.
+
+For the simple model, it seems to perform comparably with the more complex models, except in DK2-offshore.
+
+As speculated earlier, this is probably caused by the smaller input, causing the model to have no information when the base ensembles collapse.
+
+As the feature model performs well in all situations, it was chosen as a basis for further analysis of autocorrelation. 
+
+while the \gls{taqr} model was probably preferable, having better scores in most cases. The computational problems meant that there would be little training data for further analysis. 
+
+\subsection{Residual Structure}
+
+Using the feature model as a basis for the marginal distribution, we can find the pseudo-residuals; an example for DK1-onshore can be found in \cref{fig:basis:feature-example}, and for all zones in \cref{appendix:basis:pseudo}.
+
+The model seem to capture the main distribution quite well, but the tail distribution is not as well described.
+
+For DK1-offshore there are especially problems in the lower tail and some large outliers.
+
+With regard to correlation, we can see from the \gls{acf} and \gls{pacf} graphs that there is a significant autocorrelation at lag 1 and possibly lag 2. 
+
+There is some indication of a correlation at lag 24, showing "humps" around this lag in \gls{acf}.
+
+\begin{figure}[htb]
+    \centering
+    \caption[DK1-onshore - Feature Residuals]{Pseudo-residuals for the feature model in DK1-onshore.}
+    \includegraphics[width=1\linewidth]{Results/Basis/Figures/Residuals/DK1-onshore.pdf}
+    \label{fig:basis:feature-residuals}
+\end{figure}
+

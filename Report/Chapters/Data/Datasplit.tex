@@ -1,0 +1,41 @@
+\section{Data-Split}
+\label{data:datasplit}
+
+\subsection{Training and Evaluation}
+
+To avoid biases and detect overfitting, it is essential to train and evaluate models on separate datasets. Ensuring that no direct information is shared between the training and evaluation phases, other than the underlying system of interest, is crucial\cite{hastieElementsStatisticalLearning2009}.
+
+This separation helps prevent models from overfitting, similar to memorising an answer sheet for a test, which can lead to artificially inflated performance metrics. \cite{hastieElementsStatisticalLearning2009}.
+
+A simple and common way of handling this is the k-fold cross-validation. Where the data are (randomly) divided into $k$ blocks, the models are trained in $k-1$ blocks and evaluated on the last block, one fold. Then repeated for each block\cite{hastieElementsStatisticalLearning2009}.
+
+Because of the high temporal correlation that exists in the data, this approach does not work. Data leaks can occur as future data correlate with current.\cite{robertsCrossvalidationStrategiesData2017}.
+
+Ideally, more advanced strategies are used as described in \textcite{robertsCrossvalidationStrategiesData2017}, however, due to time and computational constraints, a simple train-test split was chosen.
+
+\subsection{Train-Test Split}
+
+As wind power is heavily dependent on weather, power production tends to show a seasonal effect over the year. To account for this seasonal effect, the data split was chosen as 64\%-36\% (train-test). As this split gave roughly one year of evaluation data. 
+
+The details of the split can be seen in \cref{tab:data:split} and is illustrated in \cref{fig:data:datasplit}
+
+\begin{figure}[htb]
+    \centering
+    \caption[Train-Test Split]{Train-test split of data. Visualized
+    for DK1-onshore}
+    \includegraphics[width=1\linewidth]{Results/Data/Figures/Datasplit.pdf}
+    \label{fig:data:datasplit}
+\end{figure}
+
+\input{Results/Data/Tables/Datasplit}
+
+All models used in this project, with one exception, is trained exclusively on the train-set. No data leakage should occur from the test set.
+
+The one exception is the \gls{taqr} model, explained in \cref{basis:taqr}. As an adaptive model, the model could only give forecasts in a streaming manner with continuously updating estimates.
+
+
+
+
+
+
+

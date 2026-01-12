@@ -1,0 +1,164 @@
+\section{Variogram Score}
+\label{evaluation:vars}
+
+The \gls{vars} is a score for multivariate forecast, and to illustrate the concepts here, two \gls{ar} proccesses, further defined in \cref{autocorrelation} are used. 
+
+\begin{equation}
+\begin{split}
+    Y_1 := \text{AR}(1): y_t &= 0.8y_{t-1} + \epsilon_t \\
+    Y_2 := \text{AR}(2): y_t &= 0.8y_{t-1} - 0.64y_{t-2} + \epsilon_t
+\end{split}
+\end{equation}
+
+with $\epsilon_t \sim N(0,1),\ \text{\gls{iid}}$
+
+In \cref{fig:evaluation:process} the process response to the intial condition $y_0 = 2$ is illustrated.
+The $\text{\gls{ar}}(2)$ process oscillates, while the $\text{\gls{ar}}(1)$ exponentially decays towards 0. 
+
+\begin{figure}[htb]
+    \centering\caption[Example processes]{Trajectories for the two example processes with the initial condition $y_0 = 2$. Shaded areas are the 90\% intervals for the processes}
+    \includegraphics[width=1\linewidth]{Results/Evaluation/Figures/Process.pdf}
+    \label{fig:evaluation:process}
+\end{figure}
+
+Every calculated example uses $Y_2$ as the true process, and is calculated from $100.000$ independent simulations.
+
+\subsection{Variogram}
+
+The variogram $\gamma$ of order $p > 0$ for a multivariate prediction $X^T = \begin{bmatrix} x_1, x_2,  \dots \end{bmatrix} $,
+is the expected absolute difference, to the power $p$, between all individual elements \cite{scheuererVariogramBasedProperScoring2015}
+
+\begin{equation}
+    \gamma_p(F, X)_{i,j} = \expect[F]{\abs{x_i-x_j}^p}
+\end{equation}
+
+This matrix is symmetric, and the main diagonal is zero. 
+
+\begin{equation}
+    \gamma_p(F,X) = \expect[F]{\begin{pmatrix}
+        0 & |x_1 - x_2|^p & |x_1 - x_3|^p & \cdots & |x_1 - x_n|^p \\
+        |x_2 - x_1|^p & 0 & |x_2 - x_3|^p & \cdots & |x_2 - x_n|^p \\
+        |x_3 - x_1|^p & |x_3 - x_2|^p & 0 & \cdots & |x_3 - x_n|^p \\
+        \vdots & \vdots & \vdots & \ddots & \vdots \\
+        |x_n - x_1|^p & |x_n - x_2|^p & |x_n - x_3|^p & \cdots & 0 \\
+    \end{pmatrix}}
+\end{equation}
+
+Due to the absolute value and power $p$, the expected values $\expect{\abs{x_i - x_j}}$ can rarely be theoretically calculated, and simulation usually has to be used \cite{scheuererVariogramBasedProperScoring2015}. 
+
+For the two example processes, their variogram of order $p=0.5$ is shown in \cref{fig:evaluation:variogram}
+
+\begin{figure}[htb]
+    \centering
+    \caption[VarS Score]{Variograms of order $p = 0.5$ for two the example processes}
+    \includegraphics[width=1\linewidth]{Results/Evaluation/Figures/Variogram.pdf}
+    \label{fig:evaluation:variogram}
+\end{figure}
+
+$Y_1$ shows a steady increase in difference, while $Y_2$ exhibits oscilations
+
+\subsection{VarS}
+
+The \gls{vars} is defined as the (weighted) sum of the squared difference between the expected variogram and the observed variogram of the observation $Y^T = \begin{bmatrix} y_1 & y_2 & \dots & y_n \end{bmatrix}$
+
+\begin{equation}
+    VarS_p(F,Y) = \sum_{i,j}^n w_{i,j}\left(\abs{y_i - y_j}^p - \expect[F]{\abs{x_i - x_j}^p} \right)^2
+    \label{eq:evaluation:varsorig}
+\end{equation}
+
+as the diagonal of the variogram $\abs{x_i - x_i} = 0$ is constant, this is often disregarded $w_{i,i} = 0$.
+
+\subsubsection{Modification to \gls{vars}}
+
+Compared to the normal definition of \gls{vars}, \cref{eq:evaluation:varsorig},  will be used in this project.
+
+As the scores will have a tendency to increases with the size of the variogram $n$, it can be nicer to use a (weighted) mean:
+
+\begin{equation}
+    VarS_p(F,Y) = \frac{\sum_{i,j}^n w_{i,j}\left(\abs{y_i - y_j}^p - \expect[F]{\abs{x_i - x_j}^p} \right)^2}{\sum_{i,j}^n w_{i,j}}
+\end{equation}
+
+This would, in principle, allow interpretation of scores with different time horizons.
+
+Due to the powers $p$ and $2$ in the calculation interpretation of the score can be difficult. e.g. measurements with a unit $\si{\metre}$ would have a scores with units $\si{\metre^{2p}}$.
+
+To convert back to original units, the $2p$'th root can be taken given a final definition\footnote{For $p=\frac{1}{2}$ this doesn't change the score $2p = 2\frac{1}{2} = 1$.}:
+
+\begin{equation}
+    VarS_p(F,Y) = \sqrt[2p]{\frac{\sum_{i,j}^n w_{i,j}\left(\abs{y_i - y_j}^p - \expect[F]{\abs{x_i - x_j}^2} \right)^2}{\sum_{i,j}^n w_{i,j}}}
+\end{equation}
+
+For sensible choices of weight, that is $w_{i,j} \geq 0$, the ordering of scores does not change:
+\begin{gather}
+    \text{\gls{vars}}_1 \geq \text{\gls{vars}}_2 \implies \sqrt[2p]{\frac{\text{\gls{vars}}_1}{\sum_{i,j}^n w_{i,j}}} \geq \sqrt[2p]{\frac{\text{\gls{vars}}_2}{\sum_{i,j}^n w_{i,j}}}
+\end{gather}
+
+
+\subsection{Order}
+
+The order $p$ determines what observations are emphasised. higher orders prioritising larger differences. The higher orders will in general have more variance, as can be seen in \cref{fig:evaluation:varsdist}
+
+\begin{figure}[htb]
+    \centering
+    \caption[Scores Distribution]{Distribution of scores for the example \gls{ar}(2) process.}
+    \includegraphics[width=1\linewidth]{Results/Evaluation/Figures/Vars dist.pdf}
+
+    \label{fig:evaluation:varsdist}
+\end{figure}
+
+Different situations can be constructed where one order outperforms the other. its not possible to choose one ideal order.
+Here however the order $p =0.5$ will be used exclusively.
+
+\subsection{Weighting}
+
+The weighting $w$ can be chosen in a variety of ways. \textcite{scheuererVariogramBasedProperScoring2015}. Shows that using appropriate weights can improve the signal-to-noise ratio. A pragmatic weighting is suggest of the inverse distance between between elements
+
+\begin{equation}
+    w_i,j =\frac{1}{\abs{i-j}}
+    \label{eq:evaluation:weightschuer}
+\end{equation}
+
+This weighting was also used by \textcite{jorgensenSequentialMethodsError2025}, and suggested in \textcite{bjerregardIntroductionMultivariateProbabilistic2021}. The idea being that correlation tend to decrease with distance contributing only noise.
+
+This weighting primarily points weight on the observations around the main diagonal, as can be seen in \cref{fig:evaluation:varsweight}
+
+\begin{figure}[htb]
+    \centering
+    \caption[VarS Weight]{Weight as a percentage of the maximum weight}
+    \includegraphics[width=0.5\linewidth]{Results/Evaluation/Figures/Weight.pdf}
+    \label{fig:evaluation:varsweight}
+\end{figure}
+
+For the example processes there is still information left, even at the larger lags. Additional there is a difference in stationary variance, can be seen in \cref{fig:evaluation:process}, which would only be evident at larger lags.
+
+Weighting with the inverse distance completely disregards this information. \cref{fig:evaluation:scorediff} shows the expected difference in score $\expect{\text{\gls{vars}}(Y_2, Y_1) - \text{\gls{vars}}}(Y_1, Y_1)$ at each position.
+
+For the equal weight the contributions at the tails are around 5\% the size of the largest contribution, while for the inverse distance weighting There is no contribution outside lag 6.
+
+\begin{figure}[htb]
+    \centering
+    \caption[Expected Score Difference]{Expected difference in score as a percentage of max max score. for the two example processes. Left: Equal Weighting, Right: Inverse Distance Weighting}
+    \includegraphics[width=1\linewidth]{Results/Evaluation/Figures/score diff.pdf}
+    \label{fig:evaluation:scorediff}
+\end{figure}
+
+This results and scores depending primarily the main diagonal, increasing the variance, as can be seen in \cref{fig:evaluation:diffdist}.
+
+This decreases the ability of the score to differentiate the two processes, as given in \cref{tab:evaluation:precision}.
+
+\input{Results/Evaluation/Tables/acceptance rate}
+
+\begin{figure}[htb]
+    \centering
+    \caption[Distribution of Score Differences]{Distribution of score difference $\expect{\text{\gls{vars}}(Y_2, Y_1) - \text{\gls{vars}}(Y_1, Y_1)}$}
+    \includegraphics[width=1\linewidth]{Results/Evaluation/Figures/diff dist.pdf}
+    \label{fig:evaluation:diffdist}
+\end{figure}
+
+Due to this it is decided to use an equal weighting for \gls{vars} calculations
+\begin{equation}
+    w_{i,j} = \begin{cases}
+        1 & i \neq j \\
+        0 & i = j
+    \end{cases}
+\end{equation}

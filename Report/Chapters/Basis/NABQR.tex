@@ -1,0 +1,38 @@
+\section{NABQR}
+\label{basis:nabqr}
+
+\gls{nabqr} is a method to improve the reliability of the forecast introduced by \textcite{jorgensenSequentialMethodsError2025}. The main motivation was that \gls{ecmwf}-based forecasts, relying on simulating a physical system, provided good point estimates but did not always give good risk estimates. \cite{jorgensenSequentialMethodsError2025}
+
+The idea was therefore to use improve the forecast using purely numerical methods. The method implemented had two steps: 
+
+First, the forecast was fed into a \gls{lstm} translating the forecast into a new (reduced) basis.
+
+Secondly, the transformed ensembles was then run through the \gls{taqr}, which gave the new improved forecast. \cite{jorgensenSequentialMethodsError2025}
+
+
+
+\begin{figure}[htb]
+\caption[NABQR]{Overview of the \gls{nabqr} process}
+\begin{tikzpicture}[
+    node distance=2cm,
+    every node/.style={draw, align=center},
+    arrow/.style={-{Stealth[scale=1.5]}}
+]
+
+\node[draw=none] (ensemble) {Ensemble\\Forecast};
+\node (lstm) [right=of ensemble, minimum width=2.5cm, minimum height=1.5cm] {LSTM};
+\node (taqr) [right=of lstm, minimum width=2.5cm, minimum height=1.5cm] {TAQR};
+\node[draw=none] (output) [right=of taqr] {Corrected\\Forecast};
+
+\draw [arrow] (ensemble) -- (lstm);
+\draw [arrow] (lstm) -- node[above, draw=none] {Basis} (taqr);
+\draw [arrow] (taqr) -- (output);
+
+\end{tikzpicture}
+\end{figure}
+
+During testing \textcite{jorgensenSequentialMethodsError2025}  found improvements of up to 48\% in \gls{qs}, suggesting the method works well, and beating state-of-the-art methods.
+
+As this project builds upon the work of \textcite{jorgensenSequentialMethodsError2025} The \gls{nabqr} algorithm was also used. \textcite{jorgensenSequentialMethodsError2025} noted 
+some problems with the method, mainly that of "dead" outputs. However additional problems where found during the course of this project.
+

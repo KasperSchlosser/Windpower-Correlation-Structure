@@ -1,0 +1,48 @@
+\subsection{Other Interpolators}
+\label{distributions:other}
+
+\subsubsection{Piecewise Constant Interpolation}
+
+The simplest interpolation method would be a piecewise-constant interpolation.
+
+\begin{equation}
+    F(x) =
+    \begin{cases}
+        0 & x < q_1 \\
+        p_1 & q_1 \leq x < q_2 \\
+        \hfill\vdots \hfill\\
+        p_{i+1} - p_{i-1}& q_{i-1} \leq x < q_i \\
+        \hfill\vdots \hfill\\
+        p_{n} & q_{n-1} \leq q_{n} \\
+        1 & q_{n} < x
+    \end{cases}
+\end{equation}
+
+This method essentially discretises the outcome space into a discrete random variable with outcomes $n-1$.
+
+\begin{equation}
+    F(x = k) =
+    \begin{cases}
+        p_2 & k = q_1 \\
+        \vdots \\
+        p_{i+1} - p_i & k = q_i\\
+        \vdots \\
+        1 - p_{n} & k = q_{n} \\
+    \end{cases}
+\end{equation}
+Or variations of these.
+If the outcome space is easy to categories, e.g. if we are only interested in being above/below the median. This formulation could be very useful due to the simplicity and easy intepretation.
+
+The downside is that the resulting distribution is discrete. For the investigation of autocorrelation, a discrete distribution would not be sufficient and this method is not used further.
+
+\subsubsection{Monotone Quintic Spline Interpolation}
+
+A problem with the 3 methods discussed in \cref{distributions:pwl,distributions:quadratic,distributions:spline} is in the estimated\gls{pdf} when using these methods.
+
+The interpolated \gls{pdf} can have a strange look, the spline \gls{pdf} can be very "bubbly", and worse are not guaranteed to be continuous or smooth\footnote{Defined as having continuous first derivative}, both properties would be expected for common distributions.
+
+With quintic splines, it is possible to construct an interpolation that is monotone, continuous, and with a smooth first derivative, giving the properties expected\cite{luxAlgorithm1031MQSI2023}. 
+
+However, the literature on this topic is very sparse, as also noted by \textcite{luxAlgorithm1031MQSI2023}. Implementations are even sparser, and the few implementations that exist are implemented for Fortran \cite{luxAlgorithm1031MQSI2023}.
+
+Although the properties of higher-order splines would be appealing to use, due to the lack of implementation, they are not used for this project.

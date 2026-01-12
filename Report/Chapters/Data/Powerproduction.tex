@@ -1,0 +1,55 @@
+\section{Wind-power-Production}
+\label{data:production}
+
+\subsection{Energi Data Service}
+
+Power production data was acquired through  \href{https://www.energidataservice.dk/}{\color{blue}{Energi Data Service}}, an open data platform provided by Energinet\cite{energinetEnergiDataService}.
+
+\begin{displayquote}[\cite{energinetEnergiDataService}]
+Energi Data Service is a free and open data portal. Here, anyone can get data about the Danish energy system, such as CO2 emissions and consumption and production data.
+\end{displayquote}
+
+Energinet is an independent public enterprise that owns and maintains the national Danish electricity and gas grids \cite{Energinet2025}
+
+\subsection{Project Data}
+
+For this thesis, data were acquired on request from the author of \textcite{jorgensenRealTimeForecastingRenewable2024}. Originally, these data were acquired from the "\href{https://www.energidataservice.dk/tso-electricity/ElectricityProdex5MinRealtime}{\color{blue}{Electricity Production and Exchange 5 min Realtime}\cite{energinetHome}}"-data set provided by Energi Data Service.
+
+Original data is power production given in 5 minute increments. Hourly data was obtained as the mean production over the hour.
+
+As noted on the website the 5-minute observation come from upscaled real-time measurements, and data errors may occur\cite{energinetHome}
+
+Definite data errors are negative values of observed power production, in addition some NaN values has been introduced to dataset, possibly caused by the handling of the time zone information.
+
+The data was split according to bidding zone, and wether production happend onshore or offshore giving four data sets
+
+\begin{itemize}
+    \item DK1-onshore
+    \item DK1-offshore
+    \item DK2-onshore
+    \item DK2-offshore
+\end{itemize}
+
+Each zone has different production capacity, DK1-onshore being by far the largest zone, with same maximal capacity of the other three zones combined.
+
+A small example of the data can be seen in \cref{fig:data:production-small}. 
+Here it can be noticed there is a correlation between zones, with the production in one zone roughly following the production in other zones. The fulld data can be found the the appendix \cref{fig:data:production-full}.
+
+\begin{figure}[htb]
+    \centering
+    \caption[Production data]{Production data from  17. Oct 2023. to 1. Nov. 2023}
+    \includegraphics[width=1\linewidth]{Results/Data/Figures/Comparison small.pdf}
+    \label{fig:data:production-small}
+\end{figure}
+
+
+\subsubsection{Data cleaning}
+
+To clean the data all NaN values are simply dropped.
+As some of the models and methods used in this have problems handling observations very close to zero, a small value $0.01$ was chosen as effectively zero.
+
+A summary of raw power production data can be seen in \cref{tab:data:observation}
+
+\input{Results/Data/Tables/Observation Summary}
+
+To clean the data  The observation data all NaN values were simply dropped. Then all values smaller than $0.01$ was set to $0.01$.

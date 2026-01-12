@@ -1,0 +1,158 @@
+\section{Marginal Models}
+
+In addition to fixing the problems in the existing \gls{nabqr} some ideas for improvement was also implemented.
+
+IN addition a very simple model model was made as a comparison. If this model performed well most of the complexity of the more advanced model were probably not needed
+
+The original idea of \gls{nabqr} was to use \gls{nn} to find a basis for further regression. 
+
+The basis used for further regression was quantiles estimated by the \gls{nn}.
+
+Although this did work, there is a problem with using quantiles as a basis, since close quantiles are usually very correlated, and this is not a very optimal basis for regression.
+
+As a potential improvement, a new \gls{nn} architechture was implemented that attempted to provide a basis more appropriate for quantile regression. 
+
+All models were implemented using the Keras package \cite{cholletKeras2015}, with Pytorch as a back-end\cite{paszkePyTorchImperativeStyle2019}.
+
+\subsection{NABQR model}
+A modified version of the original \gls{nabqr} \gls{nn} model was implemented. \cite{jorgensenSequentialMethodsError2025}
+
+The model consists of 3 layers as detailed in \cref{tab:basis:nabqr}
+
+\begin{table}[htb]
+\centering
+\caption[NABQR Architecture]{Architecture of the orignal \gls{nabqr} model. Input is ensembles at lag 0(current), 1, 2, 6, 12, 24, 48}
+\label{tab:basis:nabqr}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+Layer  & Type  & Activation       & Output Shape \\ \midrule
+Input  &       &                  & 7, 52        \\
+1      & LSTM  & sigmoid, tanh    & 256          \\
+2      & Dense & \gls{relu}       & 19           \\
+Output & Dense & leaky \gls{relu} & 19           \\ \bottomrule
+\end{tabular}
+\end{table}
+
+There are 2 modifications from the original model.
+
+Changing the number of neurons in the dense layers from 20 to 19.
+
+the original implementaion used 20 quantiles equally spaced between 5\% and 95\%, both inclusive. This was changed to instead use the $5\%, 10\%,\dots, 95\%$ quantiles.
+
+This change should not be practically significant, and was only done to get more presentable quantiles.
+
+The second modification is to change the activation of the output layer from \gls{relu} to leaky \gls{relu}.
+
+This alleviates the problem of "dead" neurons, described in \cref{basis:nabqr}, while still restricting the output from becoming too negative.
+
+The original version of \gls{nabqr} used \gls{taqr} to improve the forecast. Due to the greatly increased data size of the test set, along with computational problems of \gls{taqr} this becames infeasible
+
+\gls{nabqr} here refers only to the \gls{nn} model.
+
+\subsection{Simple Model}
+
+The simple model was chosen as a quantile regression on an embedding with dimension 1. Formulated as a \gls{nn} the architecture can be seen in \cref{tab:basis:simple}
+
+\begin{table}[htb]
+\centering
+\caption[Simple Architecture]{Architecture of the simple model. Input is ensembles at the current time}
+\label{tab:basis:simple}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+Layer  & Type  & Activation & Output Shape \\ \midrule
+Input  &       &            & 52        \\
+1      & Dense &            & 1            \\
+Output & Dense &            & 19           \\ \bottomrule
+\end{tabular}
+\end{table}
+
+For this model to perform well would mean the full ensemble forecast can be effectively be described by a single summary number.
+
+\subsection{Feature model}
+
+To provide a good basis for a regression, the final two layers of the model were built with this objective in mind.
+
+The model consists of 6 layers as detailed in \cref{tab:basis:feature}
+
+\begin{table}[htb]
+\centering
+\caption[Feature Architechture]{Architecture of the feature model. Input is all ensembles up to lag 48.}
+\label{tab:basis:feature}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+Layer  & Type           & Activation      & Output Shape \\ \hline
+Input  & Gaussian Dropout & $r = 0.01$    & 49,52        \\
+1      & Dense          & \gls{selu}      & 49, 5        \\
+2      & Dense          & \gls{selu}      & 49, 5       \\
+3      & LSTM           & sigmoid, tanh   & 5           \\
+4      & Dense          & \gls{selu}      & 5           \\
+5      & Dense          & \gls{selu}      & 5            \\
+Output & Dense          &                 & 19           \\ \hline\bottomrule
+\end{tabular}
+\end{table}
+
+The noise layer was put in to control for overfitting, while the output layer was chosen as linear to optimise layer 5 for a linear quantile regression.
+
+\subsection{TAQR}
+
+A model using \gls{taqr}  was also made, The model used layer 5 of the feature model as a basis for regression. The reduced size of the basis meant its was easier to run the to run on the \gls{nabqr} basis.
+
+However computational problems still proved too big, and the algorithm was run on only the last 10.000 data points.
+This Correspond to the test set and $\sim1200$ additional data points.
+
+\subsection{Ensemble}
+
+Finally, the ensemble forecast was also used as a reference point.
+
+Two versions were used:
+
+In the first version the empirical quantile quantiles of the ensembles was used to interpolate a distribution, scores were calculated by sampling this distribution.
+
+It was realised that this method did not necessarily preserve the structure of the ensembles. 
+
+The second versions calculated scores directly from the ensembles. IE. The ensembles were assumed to be samples of the underlying distribution and used to calculate scores.
+
+While this preserves the structure of the ensembles, it also mean that the \gls{crps} and \gls{vars} scores are estimated from only $\sim 50$ sample.
+
+\subsection{Training}
+
+Model training was performed on the training data, as described in \cref{data:datasplit}, and the test set was used for validation to track model performance.
+
+For all models, training was carried out in batches of 7 full days ($7*24 = 144$ data points) using the Adam optimiser with a learning rate of $10^{-3}$.
+
+As mentioned in \cref{basis:nabqr}, an early stopping criterion was implemented for all models. If there had been no improvement in the validation loss for 20 epochs, the training was stopped, the model rolled back 20 epochs, and then saved.
+
+If the training exceeded 1000 epochs, the training was also stopped. This did not happen in practice.
+
+The validation loss curves can be seen in \cref{fig:basis:loss}. 
+The feature model seems to have a slow but consistent improvement in both training- and validation-loss, suggesting that the model learns the underlying system. For DK1-onshore the validation and training-loss becomes almost equal.
+
+For \gls{nabqr} the tendency to overfit can easily be seen in the loss curves.
+while the early stopping criteria ensure the model is not completely useless, the overfitting does seem to prevent the model from achieving a good prediction.
+
+The simple model seem to perform well in every scenario except for DK2-offshore. Here the simple model, getting only the current ensemble as input, has no possibility of correcting the errors in the ensemble forecasts.
+
+\subsection{Models}
+
+In the final comparison, 6 models were included.
+
+\begin{itemize}
+    \item Ensemble - Interpolated distribution
+    \item Ensemble Raw - Distribution directly from ensembles
+    \item Feature - New \gls{nn} model
+    \item \gls{nabqr} - Original \gls{nn} from \textcite{jorgensenSequentialMethodsError2025}
+    \item Simple - Quatile regression on 1-dimensional basis
+    \item \gls{taqr} - \gls{taqr} with Feature model as basis
+\end{itemize}
+
+For all models, except the raw ensembles, the full distribution was estimated by interpolating the model quantiles using a 3. order spline.
+
+\begin{landscape}
+\begin{figure}[htb]
+    \centering
+    \caption[Loss Curves]{Loss curves for the 3 \gls{nn} models. x-axis plotted on a log scale.}
+    \includegraphics[width=0.95\linewidth]{Results/Basis/Figures/Loss.pdf}
+    \label{fig:basis:loss}
+\end{figure}
+\end{landscape}
+

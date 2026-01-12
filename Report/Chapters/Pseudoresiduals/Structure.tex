@@ -1,0 +1,115 @@
+\chapter{Pseudo-Residuals}
+\label{Pseudo}
+\addcontentsline{lof}{chapter}{Pseudo-residuals}
+
+As the main idea for this thesis relies on the concept of pseudo-residuals, these will be introduced in this chapter.
+
+For random, possibly multivariate, variables $y_i$ following a distribution F, there are two distinct pseudo-residuals associated with this variable: the uniform pseudo-residual, $u-i$ and the normal pseudo-residual $z_i$. \cite{zucchiniHiddenMarkovModels2017}
+
+The uniform pseudo-residual is defined as the \gls{cdf} of the variable, while the normal pseudo-residual is the quantile of the standard normal distribution corresponding to the uniform pseudo-residual.
+\begin{align}
+    y_i &\sim F \\
+    u_i &:= F(y_i) \\
+    z_i &:= \Phi^{-1}(u_i)
+\end{align}
+where $\Phi(x)$ is the \gls{cdf} of the standard normal distribution. It can quickly be seen that the uniform pseudo-residual follows a uniform distribution on $[0;1]$
+\begin{equation}
+\begin{gathered}
+    P(u_i \leq t) = P(y_i \leq F^{-1}(t)) = t \\
+    \implies \\ 
+    u_i \sim U_{[0;1]}(t)
+\end{gathered}
+\end{equation}
+
+and by extension the normal pseudo-residuals will follow a standard normal distribution. \cite{zucchiniHiddenMarkovModels2017}
+\begin{equation}
+    z_i \sim N(0,1^2)
+\end{equation}
+
+In this thesis, the term pseudo-residual will refer to the normal pseudo-residual, with the uniform specified as necessary.
+
+\newpage
+\input{Chapters/Pseudoresiduals/Model Checking}
+\clearpage
+\input{Chapters/Pseudoresiduals/Correlation Structure}
+
+
+
+% For a random variable $X_i \sim F$, 
+% we can define the uniform \gls{pseudo}, $U_i$ as:
+% \begin{equation*}
+% U_i = F(X_i) 
+% \end{equation*}
+% this implies
+% \begin{equation*}
+%     U_i \sim U(0,1)
+% \end{equation*}
+
+% Where F is the \gls{cdf} of $X_i$ and $U(0,1)$ is the uniform distribution with limits 0 and 1. Further, define the normal \gls{pseudo} as 
+% \[
+% Z_i = \bm{\Phi}^{-1}(U_i) \implies Z_i \sim N(0,1)
+% \]
+% This gives three ways of presenting the random variable $x_i$\cite{hmmbook}
+
+% \begin{enumerate}
+%     \item $x_i \sim F$: Original space
+%     \item $u_i \sim U(0,1)$: \gls{cdf}-space
+%     \item $z_i \sim N(0,1)$: Normal-space
+% \end{enumerate}
+
+% \subsection{Model checking with pseudo residuals}
+
+% If the random variable $x_i$ follows the distribution $F$ then both $u_i$ and $z_i$ follows a uniform- and standard normal-distribution.\\
+% Standard diagnostic tools, suited for the these distributions, can be used for checking distribution assumption. \cite{hmmbook}
+
+% some tools we will use are 
+
+% \subsubsection{Histograms}
+
+% Both the uniform-and normal distribution have distinct shapes
+% \begin{figure}[H]
+%     \centering
+%     \begin{subfigure}{0.5\linewidth}
+%     \centering
+%     \includegraphics[width=\linewidth]{Figures/Autocorrelation/model checking/pwl_cdfdist.png}
+%     \caption{uniform}
+%     \label{asdasdasdasd}
+%     \end{subfigure}%
+%     \begin{subfigure}{0.5\linewidth}
+%     \centering
+%     \includegraphics[width=\linewidth]{Figures/Autocorrelation/model checking/pwl_normaldist.png}
+%     \caption{normal}
+%     \label{asdasdasdasdsadasd}
+%     \end{subfigure}
+    
+% \end{figure}
+
+% \subsubsection{QQ-plot}
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.8\linewidth]{Figures/Autocorrelation//model checking/DK2-onshore_ARMAtest_after_probplot.png}
+%     \caption{Enter Caption}
+%     \label{fig:enter-label}
+% \end{figure}
+
+% \subsubsection{Outliers}
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.8\linewidth]{Figures/Autocorrelation/model checking/DK2-onshore_SARMAtest_after_scatter.png}
+%     \caption{outliers}
+%     \label{fig:enter-label}
+% \end{figure}
+
+% \subsubsection{\gls{acf} \& \gls{pacf}}
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.5\linewidth]{Figures/Autocorrelation/model checking/Constant_autocorrelation.png}
+%     \caption{acf}
+%     \label{fig:enter-label}
+% \end{figure}
+
+
+
+

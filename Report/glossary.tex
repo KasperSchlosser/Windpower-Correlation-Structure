@@ -1,0 +1,117 @@
+%makenoidxglossaries
+\makeglossaries
+\setabbreviationstyle[acronym]{long-short}
+
+
+%glossary
+
+\newglossaryentry{pseudo}
+{
+        name=pseudo-residual,
+        description={Value transformed into CDF- or normal-space}
+}
+
+%acronyms with definitions
+
+% \newglossaryacronym
+% {nabqr}{NABQR}{Neural Adaptive Basis for Quantile Regression}
+% {Algorithm for improving ensemble based forecasts.\\Developed by \citeauthor{bastthesis} in his thesis\cite{bastthesis} and resulting paper\cite{nabqrpaper}.\\ More details in \cref{nabqr}}
+
+% \newglossaryacronym
+% {taqr}{TAQR}{Time-Adaptive Quantile Regression}
+% {Algorithm for quantile regression with time varying parameters. Developed by \textcite{taqrpaper}}
+
+%acronyms
+
+\newacronym{rmse}{RMSE}{Root Mean Squared Error}
+\newacronym{crps}{CRPS}{Continous Ranked Probability Score}
+\newacronym{qs}{QS}{Quantile Score}
+\newacronym{vars}{VarS}{Variogram Score}
+\newacronym{cdf}{CDF}{Cumulative Distribution Function}
+\newacronym{pdf}{PDF}{Probability Density Function}
+\newacronym{acf}{ACF}{Autocorrelation Function}
+\newacronym{pacf}{PACF}{Partial-Autocorrelation Function}
+\newacronym{ecmwf}{ECMWF}{European Centre for Medium-Range Weather Forecasts}
+\newacronym{ar}{AR}{Auto-Regressive}
+\newacronym{ma}{MA}{Moving Average}
+\newacronym{arma}{ARMA}{Auto-Regressive Moving Average}
+\newacronym{sarma}{SARMA}{Seasonal Auto-Regressive Moving Average}
+\newacronym{arima}{ARIMA}{Auto-Regressive Integrated Moving Average}
+\newacronym{sarima}{SARIMA}{Seasonal Auto-Regressive Integrated Moving Average}
+\newacronym{lstm}{LSTM}{Long Short-Term Memory}
+\newacronym{ppf}{PPF}{Probability Point Function}
+\newacronym{iid}{IID}{Independent, Identically Distributed}
+\newacronym{mae}{MAE}{Mean Absolute Error}
+\newacronym{df}{DF}{Degrees of freedom}
+\newacronym{nn}{NN}{Neural-Net}
+\newacronym{hpe}{HPE}{High-probability ensemble}
+\newacronym{kl}{KL-divergence}{Kullback-Liebler divergence}
+\newacronym{taqr}{TAQR}{Time Adaptive Quantile Regression}
+\newacronym{nabqr}{NABQR}{Neural Adaptive Basis for Quantile Regression}
+\newacronym{tso}{TSO}{Transmission System Operator}
+\newacronym{dso}{DSO}{Distribution System Operator}
+\newacronym{relu}{ReLU}{Rectified Linear Unit}
+\newacronym{selu}{SELU}{Scaled Exponential Linear Unit}
+\newacronym{bic}{BIC}{Bayesian Information Criterion}
+\newacronym{qq}{QQ}{Quantile-Quantile}
+\newacronym{pca}{PCA}{Principal Component Analysis}
+\newacronym{ica}{ICA}{Independent Component Analysis}
+\newacronym{sde}{SDE}{Stochastic Differential Equation}
+
+
+% symbols and nomenclature
+\newglossaryentry{range}
+{
+  name={\ensuremath{[a;b]}},
+  description={Set of numbers between a and b, inclusive. $[a;b] = \{x \in \mathbb{R} | a \leq x \leq b\}$},
+  type=symbols
+}
+
+\newglossaryentry{expected}
+{
+  name={\ensuremath{\mathbb{E}_P[x]}},
+  description={The expected value of $x$ under probability measure $P$},
+  type=symbols
+}
+
+\newglossaryentry{positive}
+{
+  name={\ensuremath{x^+}},
+  description={The "positive" function: 
+    \[
+        x^+ = 
+        \begin{cases} 
+            x, & \text{if } x \geq 0 \\
+            0, & \text{if } x < 0 
+        \end{cases}
+    \]},
+  type=symbols
+}
+
+
+
+\newglossaryentry{Tranpose}
+{
+  name={\ensuremath{X^T}},
+  description={The transpose of a matrix $X$
+  \[
+  X = \begin{bmatrix}
+    a & b\\
+    c  & d
+  \end{bmatrix} \iff X^T = \begin{bmatrix}
+    a & c\\
+    b  & d
+  \end{bmatrix}
+  \]},
+  type=symbols,
+}
+
+
+\newglossaryentry{indicator}
+{
+  name={$\mathbb{I}_{x < a}$},
+  description={Indicator function with condition in subscript \[\mathbb{I}_{x<a} = \begin{cases}1 & x < a \\ 0 \end{cases}\]},
+  type=symbols
+}
+
+

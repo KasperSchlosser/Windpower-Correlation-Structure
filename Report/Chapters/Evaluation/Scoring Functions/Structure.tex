@@ -1,0 +1,30 @@
+\section{Consistent Scoring Functions}
+\label{evaluation:scores}
+
+
+As it is not always feasible to determine the entire distribution, point estimates should also be evaluated.
+
+A scoring function is a scoring function that takes a point forecast, e.g. the mean, median, 95\% quantile, etc., and observation, giving a score.
+
+\begin{equation}
+    S: \Omega \times \Omega \rightarrow\mathbb{R}
+\end{equation}
+
+A consistent scoring function is a scoring function in which the true point estimate, $t$, has the lowest expected score.  \cite{gneitingStrictlyProperScoring2007}
+
+\begin{equation}
+    E_{y \sim P}[S(t,y)] \leq E_{y \sim P}[S(x,y)],\quad\forall x \in \Omega
+\end{equation}
+
+like with the scoring rules a strictly consistent scoring rule is one where equality only holds for the true point estimate:
+
+\begin{equation}
+    E_{y \sim P}[S(t,y)] = E_{y \sim P}[S(x,y)] \iff t = x
+\end{equation}
+
+Examples of consistent scoring functions include \gls{mae}, \gls{rmse},\gls{qs}. all three of which is used in this project.
+
+
+\input{Chapters/Evaluation/Scoring Functions/MAE}
+\input{Chapters/Evaluation/Scoring Functions/RMSE}
+\input{Chapters/Evaluation/Scoring Functions/QS}

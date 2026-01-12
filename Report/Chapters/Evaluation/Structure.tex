@@ -1,0 +1,34 @@
+\chapter{Evaluation}
+\label{evaluation}
+\addcontentsline{lof}{chapter}{Evaluation}
+\addcontentsline{lot}{chapter}{Evaluation}
+
+Many othe the task in this project required quantitative measures of performance.
+
+To evaluate the interpolation methods in \cref{distributions} two measures of distance between distributions are used.
+
+\begin{itemize}
+    \item Wasserstein-distance with order 1 $W_1$
+    \item Wasserstein-distance with order 2 $W_2$
+    \item \gls{kl} $D_{KL}(P||Q)$
+\end{itemize}
+
+
+For evaluation both the marginal forecasts in \cref{basis}, and the correlation corrected forecast in \cref{autocorrelation}. Four scores are used, two point scores and two distributions.
+
+\begin{itemize}
+    \item \gls{mae}
+    \item \gls{rmse}
+    \item \gls{crps}
+    \item \gls{vars} with order 0.5 $\text{\gls{vars}}_\frac{1}{2}$
+\end{itemize}
+
+Finally to train the \gls{nn}s in \cref{basis} the \gls{qs} was used as a loss function. This if also presented here.
+\newpage
+\input{Chapters/Evaluation/Distribution metrics/Structure}
+\newpage
+\input{Chapters/Evaluation/Proper Scores}
+\input{Chapters/Evaluation/Scoring Functions/Structure}
+\input{Chapters/Evaluation/Sensitivity}
+\clearpage
+\input{Chapters/Evaluation/VarS}

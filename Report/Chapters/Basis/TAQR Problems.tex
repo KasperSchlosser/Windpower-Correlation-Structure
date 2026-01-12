@@ -1,0 +1,63 @@
+\section{Problems in TAQR}
+
+During the course of the project, some critical problems were found in the python implementation of \gls{taqr}.
+
+Some of these affected the reliability of the code, these problems were fixed, while another affected the usability of the implementation, due to this problem the useability of \gls{taqr} was very limited and it was decided to include only as a reference point. 
+
+\subsection{Misalignment of output}
+
+The first problem was the alignment of the output.
+
+For a given data input, the implementation \gls{taqr} returned three outputs: Estimated quantiles, actual observations, and regression parameters at each time point.
+
+All three for only the test data.
+
+There was a misalignment between these outputs, defining $t_1$ as the time of the first test data point, and $t_n$ for the last. The returned parameters spanned $t_{2}$ to $t_{n-1}$, the returned quantiles spanned $t_3$ to $t_n$ and the return observations spanned $t_1$ to $t_{n-2}$.
+
+However, the pipeline of \gls{nabqr} used the alignment of the parameters for all the outputs returned, $t_1$ to $t_{n-1}$. the result of which can be seen in \cref{fig:basis:alignment}
+
+\begin{figure}[htb]
+    \centering
+    \caption[TAQR Misalignment]{Misalignment between estimate and observations from the output of \gls{taqr}}
+    \includegraphics[width=1\linewidth]{Results/Basis/Figures/taqr alignment.pdf}
+    \label{fig:basis:alignment}
+\end{figure}
+
+\subsection{Missing Initialisation}
+
+The second problem found was that of initialisation.
+
+It was found that no matter the amount of initialisation data, the estimates were always more noisy in the beginning of the test data compared to the end of the test data.
+
+This was weird when the algorith was supposed to have $\sim16000$ data points after initialisation.
+
+It turns out that the \gls{taqr} implementation only used the first 500 data points for initialisation and discarded the rest. This can be seen in \cref{fig:basis:taqrinit}. 
+
+\begin{figure}[htb]
+    \centering
+    \caption[Missing Initialisation Data]{Graph of the estimated "intercept" parameter. \gls{taqr} algorithm initialised with different amount of data. }
+    \includegraphics[width=1\linewidth]{Results/Basis/Figures/beta initialiser.pdf}
+    \label{fig:basis:taqrinit}
+\end{figure}
+
+The initial estimates are always the same once there are more than 500 data points of initialisation.
+
+The estimates have a rapid change in value after roughly 500 new data points, when the new data begin to outnumber the initial data.
+
+The root of the problem was found in the R code used to provide an initial point for the simplex algorithm. The code accidentally discarded everything but the first 500 data points.
+
+Fixing this code gave consistent estimates regardless of the initialisation.
+
+\subsection{Bin size and Code performance}
+
+The final problem was how the \gls{taqr} bins were handled.
+
+Only a single bin was possible; this was a noted limitation, but it was found during the project that the bin size had to be the full data size. Any changes would cause the algorithm to crash. 
+
+This meant that the algorithm lost some of the time-adaptive aspects, as it did not discard old observations.
+
+The Python implementation of \gls{taqr} was a direct translation unusable slow with larger amounts of data and larger bin sizes. 
+
+Running \gls{taqr} on just the last 10.000 data points was slow. Running it on the full data set data set of 24381 data points was not reasonably possible.
+
+Fixing this problem would have required a larger rework of the \gls{taqr} code, which would not be possible within the duration of the project.

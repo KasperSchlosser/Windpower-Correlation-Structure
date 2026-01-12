@@ -1,0 +1,63 @@
+\subsection{Piecewise Linear with Quadratic Tail}
+\label{distributions:quadratic}
+
+To deal with the problem, \cref{distributions:tail}  it was suggested to increase the order of the interpolation, i.e. piecewise quadratic interpolation.
+
+Monotone quadratic spline have some slightly weird properties. It is not possible to ensure monotonicity, smoothness and that the quantiles match, without insertion of additional interpolation points \cite{schumaker1983a}.
+
+The \gls{pdf} of the interpolation will look rather unusual, essentially consisting of triangular spikes.
+
+The resulting distribution would have the peculiar phenomenon of samples cluster just before or after the observed quantiles. 
+
+The quadratic part was therefore only used in the tails, the rest of the interpolation will be linear.
+
+A quadratic polynomial has 3 parameters:
+\begin{equation}
+    g(x) = ax^2 +bx + c 
+\end{equation}
+
+Fitting this to only two points requires additional constraints. 
+
+The most suitable solution would be to ensure that the derivative at the edges are zero,  $g'(p_0) = 0,\ g'(p_n) = 0$.
+
+To fit the function, we have to solve the equations:
+\begin{equation}
+\begin{split}
+    g(q_1) &= aq_1^2 + bq_i + c = p_1 \\
+    g(q_2) &= aq_{2}^2 + bq_{2} + c = p_{2}\\
+    g'(q_1) &= 2aq_1 + b = 0
+\end{split}
+\end{equation}
+or the corresponding one for $p_n$.
+
+For the rest of the interpolation points, the method is the same as for the linear interpolator linear, \cref{distributions:pwl}.
+
+The full interpolated \gls{cdf} is given by:
+\begin{equation}
+    F(x) = 
+    \begin{cases}
+    \hfill 0 \hfill  & x < q_1 \\
+    \hfill \frac{\Delta P_1}{{\Delta Q_1}^2} \left ({x - q_0}\right)^2 \hfill & q_1 \leq x < q_2 \\
+    \hfill \vdots \hfill & \\
+    \hfill \frac{\Delta P_i}{\Delta Q_i} (x - q_i) + p_i\hfill & q_{i} \leq x < q_{i+1}\\
+    \hfill \vdots \hfill  \\
+    -\frac{\Delta P_{n-1}}{{\Delta Q_{n-1}}^2} \left (x - q_{n-1}\right)^2 + \frac{\Delta P_{n-1}}{{\Delta Q_{n-1}}} (x - q_{n-1}) + p_{n-1}& q_{n-1} \leq x < q_{n}\\
+    \hfill 1 \hfill& x > q_n
+    \end{cases}
+\end{equation}
+
+and the corresponding \gls{pdf}:
+\begin{equation}
+    f(x)= 
+    \begin{cases}
+    \hfill 0 \hfill  & x < q_1 \\
+    \hfill 2\frac{\Delta P_1}{{\Delta Q_1}^2} \left ({x - q_0}\right) \hfill & q_1 \leq x < q_2 \\
+    \hfill \vdots \hfill & \\
+    \hfill \frac{\Delta P_i}{\Delta Q_i}\hfill & q_{i} \leq x < q_{i+1}\\
+    \hfill \vdots \hfill  \\
+    -2\frac{\Delta P_{n-1}}{{\Delta Q_{n-1}}^2} \left (x - q_{n-1}\right) + \frac{\Delta P_{n-1}}{{\Delta Q_{n-1}}}& q_{n-1} \leq x < q_{n}\\
+    \hfill 0 \hfill& x > q_n
+    \end{cases}
+\end{equation}
+
+The quadratic tail seems to greatly improve the fit in the tail region as can be seen in \cref{fig:distributions:examplecdf}

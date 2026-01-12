@@ -1,0 +1,27 @@
+\begin{table}[htb]
+\centering
+\caption[Interpolation Scores]{The Wasserstein distance (with \( p = 1 \) and \( p = 2 \)) and \gls{kl} for the three interpolation methods.}
+\label{tab:distributions:testres}
+\begin{tabular}{lllll}
+\toprule
+ &  & Linear & Linear - tail & Spline \\
+\midrule
+\multirow[r]{3}{*}{Uniform} & $W_1$ & \bfseries 0.00 & 0.25 & \bfseries 0.00 \\
+ & $W_2$ & \bfseries 0.00 & 0.39 & \bfseries 0.00 \\
+ & $D_{KL}$ & \bfseries 0.00 & 0.10 & \bfseries 0.00 \\
+\cline{1-5}
+\multirow[r]{3}{*}{Normal} & $W_1$ & 1.04 & 0.60 & \bfseries 0.55 \\
+ & $W_2$ & 1.65 & 1.00 & \bfseries 0.93 \\
+ & $D_{KL}$ & 2.31 & 0.92 & \bfseries 0.82 \\
+\cline{1-5}
+\multirow[r]{3}{*}{Student's t} & $W_1$ & 0.83 & 0.45 & \bfseries 0.43 \\
+ & $W_2$ & 2.77 & 2.62 & \bfseries 2.62 \\
+ & $D_{KL}$ & 0.36 & 0.13 & \bfseries 0.12 \\
+\cline{1-5}
+\multirow[r]{3}{*}{Beta} & $W_1$ & 0.62 & \bfseries 0.23 & 0.30 \\
+ & $W_2$ & 1.07 & \bfseries 0.47 & 0.53 \\
+ & $D_{KL}$ & 0.64 & \bfseries 0.10 & 0.14 \\
+\cline{1-5}
+\bottomrule
+\end{tabular}
+\end{table}

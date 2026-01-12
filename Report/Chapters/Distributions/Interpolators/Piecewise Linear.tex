@@ -1,0 +1,64 @@
+\subsection{Piecewise Linear Interpolation}
+\label{distributions:pwl}
+
+Piecewise-linear interpolation, as the names suggest, is a function that connects the estimated quantiles in a straight line. 
+\begin{equation}
+    F_k(x) = ax + b
+\end{equation}
+
+To fit a straight line to two points $(q_i,p_o)$ $(q_j,p_j)$ requires solving the equations:
+
+\begin{align}
+    F_k(q_i) &= aq_i + b = p_i \\
+    F_k(q_{i+1}) &= aq_{i+1} + b = p_{i+1}
+\end{align}
+
+Which can quickly be solved giving 
+\begin{equation}
+\begin{split}
+    a &= \frac{p_{i+1}-p_i}{q_{i+1}-q_i} = \frac{\Delta P_1}{\Delta Q_1} \\
+    b &= p_i - a q_i = p_i - \frac{\Delta P_1}{\Delta Q_1} q_i
+\end{split}
+\end{equation}
+and with a slight rewriting
+\begin{equation}
+    f_k(x) = \frac{\Delta P_1}{\Delta Q_1} (x-q_i) + p_i
+\end{equation}
+
+The interpolated \gls{cdf} is given by:
+
+\begin{equation}
+    F(x) = 
+    \begin{cases}
+    \hfill 0 \hfill  & x < q_1 \\
+    \hfill \frac{\Delta P_1}{\Delta Q_1} (x - q_1) \hfill  & q_1 \leq x < q_2 \\
+    \hfill \vdots \hfill & \\
+    \hfill \frac{\Delta P_i}{\Delta Q_i} (x - q_i) + p_i\hfill & q_{i} \leq x < q_{i+1}\\
+    \hfill \vdots \hfill & \\
+    \hfill \frac{\Delta P_{n-1}}{\Delta Q_{n-1}} (x - q_{n-1}) + p_{n-1} & q_{n-1} \leq x < q_{n}\\
+    \hfill 1 \hfill& x \geq q_n
+    \end{cases}
+\end{equation}
+The corresponding \gls{pdf} is:
+\begin{equation}
+    f(x) =
+    \begin{cases}
+    \hfill 0 \hfill  & x < q_1 \\
+    \hfill \frac{\Delta P_1}{\Delta Q_1} \hfill  & q_1 \leq x < q_2 \\
+    \hfill \vdots \hfill & \\
+    \hfill \frac{\Delta P_i}{\Delta Q_i} \hfill & q_{i} \leq x < q_{i+1}\\
+    \hfill \vdots \hfill & \\
+    \hfill \frac{\Delta P_{n-1}}{\Delta Q_{n-1}}  & q_{n-1} \leq x < q_{n}\\
+    \hfill 0 \hfill& x \geq q_n
+    \end{cases}
+\end{equation}
+
+Piecewise linear interpolation will generally work quite well in regions where the estimated \gls{cdf} is well described, or where the true \gls{cdf} is roughly linear.
+
+In the tail regions of a distribution, neither is usually the case. This can be seen in \cref{fig:distributions:examplecdf}.
+
+In the well-described middle region, the difference between the interpolation and the true distribution is hard to spot.
+
+In the tail region the difference is evident the linear interpolation in the tail region corresponds to a flat probability in this region, i.e. all values in the tail region is equally likely, see \cref{fig:distributions:examplepdf}.
+
+This leads to the problem described in \cref{distributions:tail}.

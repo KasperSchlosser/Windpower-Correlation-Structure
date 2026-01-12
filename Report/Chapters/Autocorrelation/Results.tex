@@ -1,0 +1,42 @@
+\section{Model Results}
+\label{autocorrelation:results}
+
+For calculating the scores of the correlation models, Two methods was used:
+
+As mentioned in \cref{data:ensemble} the \gls{ecmwf} forecast for a given day are available in its entirety 12 hours before the day.
+
+For the first evaluation method the correlation models were provided with all observations up to 12 hours before the current time, corresponding to all information available at the time of the original forecasts.
+
+In the second evaluation method the correlation model was given no observational data. In practice accomplished by forecasting a very long time horizon, $24000$ hours, and using only the last 24 hours.
+
+An example of the \gls{sarma} forecasts compared to the feature model forecast, can be seen in \cref{fig:autocorrelation:dk1-example}, with examples for all zones in available in the appendix \cref{appendix:autocorrelation:sarma}. 
+
+The examples are only for the \gls{sarma} models with observational data, the forecasts without observational data are nearly identical to the base feature model forecast.
+
+\begin{figure}[htb]
+    \centering
+    \caption[Example SARMA Forecast]{Example of the \gls{sarma} forecast for DK1-onshore.}
+    \includegraphics[width=1\linewidth]{Results/Autocorrelation/Figures/DK1-onshore example.pdf}
+    \label{fig:autocorrelation:dk1-example}
+\end{figure}
+
+From the examples, the correlation models seem to better follow the trajectories of the observations. Allowing the estimates to respond when periods of deviations occurs.
+
+\subsection{Scores}
+Finally, the scores of the correlation corrected forecasts can be calculated, the scores can be seen in \cref{tab:autocorrelation:scores}
+
+\input{Results/Autocorrelation/Tables/Scores}
+
+For \gls{mae}, \gls{rmse}, \gls{crps} the \gls{sarma} forecast with observational data performed better in  all zones. While the scores are better it does not beat the other models by are large margin. With the feature model scoring within 10\% in all cases.
+
+The improvement in these scores also seem to come only from the addtional information provided by the observational data. The \gls{sarma} mode without observational data score identically to the feature model.
+
+The improvement in \gls{vars} is however quite stark, with only the ensemble forecast in DK1-offshore being close.
+
+The largest improvement is in DK2 onshore where the scores \gls{vars} is improved by $19.5\%$ compared to the feature model to $34\%-51\%$, compared to the ensembles.
+
+The most notable thing is how the improvement in \gls{vars} does not seem to be contingent on additional information provided by the observational data.
+
+Across zones the improvement in \gls{vars} compared the feature model is $19\%$ with observational data, and $17\%$ without.
+
+This would suggest the models do capture the correlation structure of the system well.

@@ -1,0 +1,15 @@
+\subsection{Root Mean Squared Error}
+\label{evaluation:scores:rmse}
+
+Like \gls{mae}, \gls{rmse} is also derived from a distance metric, specifically the Euclidean distance metric.
+
+\begin{equation}
+    \text{RMSE}(\bar{y}, Y) = \sqrt{\frac{\sum_i^N (y_i - \bar{y})^2}{N}}
+\end{equation}
+
+The \gls{rmse} is not equally sensitive to each observation, unlike the \gls{mae}. Larger observations have a greater impact on the final score. 
+
+\begin{equation}
+    \frac{d\text{RMSE}}{dy_i} = \sqrt{\frac{N}{\sum_i^N (y_i - \bar{y})^2}}\frac{2(y_i - \bar{y})}{N} = \frac{1}{\sqrt{\sum_i^N (y_i - \bar{y})^2}} \frac{2(y_i - \bar{y})}{\sqrt{N}}
+\end{equation}
+

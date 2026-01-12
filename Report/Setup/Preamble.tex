@@ -1,0 +1,63 @@
+\usepackage{microtype}      % better looking text
+%\usepackage[utf8]{inputenc}
+\usepackage[table]{xcolor}         % Package for defining DTU colours to be used
+\usepackage{fontspec}       % Package for custom fonts
+\usepackage[]{geometry}     % Package for changing page margins (before fancyhdr) 
+\usepackage{fancyhdr}       % Package to change header and footer
+\usepackage{parskip}        % Package to tweak paragraph skipping (instead of indents a small skip is added after every paragraph)
+\usepackage{titlesec}
+\usepackage{tikz}           % Package for drawing
+\usepackage{pgfplots}       % Package for creating graphs and charts
+\usepackage{amsmath}        % For aligning equations among other
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage{bm}
+\usepackage{siunitx}        % SI units
+\usepackage{listings}       % Package for inserting code, (before cleveref)
+\PassOptionsToPackage{hyphens}{url} % Ability to line break urls at hyphens
+\usepackage{hyperref}       % Package for cross referencing (also loads url package)
+\usepackage{cleveref}       % improved cross referencing
+\usepackage{textcomp}       % \textdegree = °C and other useful symbols
+\usepackage[english]{babel} % localisation 
+\usepackage[labelsep=newline,textfont={small}]{caption}      % better captions
+\usepackage{subcaption}     % for subfigures
+\usepackage{csquotes}       % For biblatex with babel
+\usepackage[backend=biber,style=ieee]{biblatex} % Package for bibliography (citing)
+\usepackage{tabularx}       % for ability to adjust column spacing in tabular better
+\usepackage{booktabs}       % for better tables
+\usepackage{multirow} 
+\usepackage{graphicx}
+\usepackage{float}          % floating figures in correct places
+\usepackage{calc}           % Adds ability for latex to calculate (3pt+2pt) 
+\usepackage{blindtext}
+\usepackage{lscape}
+\usepackage{afterpage}
+\usepackage[automake,acronym,symbols,nopostdot,nonumberlist,toc=false]{glossaries-extra}
+\usepackage{xparse}
+\usepackage[pdf]{graphviz}
+\usepackage{array}
+\usepackage[above,below]{placeins}
+\extrarowheight=2pt
+\usetikzlibrary{arrows.meta, positioning}
+
+\BiblatexSplitbibDefernumbersWarningOff
+\defbibfilter{other}{type=online or type=misc or type=software}
+
+\bibliography{Thesis}
+
+\newcommand{\newglossaryacronym}[4]{
+    \newglossaryentry{#1_def}{
+        name = {#3},
+        description={#4}
+    }
+
+    \newglossaryentry{#1}{
+        type = \acronymtype,
+        name = #2,
+        description = {\glslink{#1_def}{#3}},
+        first = \glslink{#1_def}{#3} (#2)
+    }
+    %\newacronym
+    %{#1}{#2}{\glslink{#1_def}{#3}}
+}

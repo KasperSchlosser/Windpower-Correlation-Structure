@@ -1,0 +1,45 @@
+\section{Modelling Correlation}
+\label{psudo:copula}
+
+The second use case is in modelling the correlation structure, which is explored in detail in \cref{autocorrelation}. 
+
+The correlation structure of a multivariate variable $Y^T = \begin{bmatrix} y_1, y_2, \dots \end{bmatrix}$ describes how the individual random variables are distributed in relation to each other, that is, the joint distribution $F(Y) = F(y_1,y_2,\dots)$.\cite{madsenTimeSeriesAnalysis2007}
+
+The marginal distribution of an individual element $F_{y_i}$ is the distribution over all possible outcomes\cite{madsenTimeSeriesAnalysis2007}:
+\begin{equation}
+\begin{split}
+    f{y_1} &= \int\dots\int f(y_1,y_2,\dots,y_n)d{y_2}\dots dy_n \\
+    F_{y_1} &= \int f_{y_1}(x) dx
+\end{split}
+\end{equation}
+
+The most well-known multivariate distribution is probably the multivariate normal, where all marginal distributions are also (multivariate) normal\cite{madsenTimeSeriesAnalysis2007}. 
+
+Other multivariate distributions exist, though not as numerous as univariate distributions. It can be difficult to describe the correlation between random variables with different marginal distributions\cite{huber2015a}
+
+For time-varying process, different methods exist to describe the correlation structure. In discrete time, \gls{arima} and related models are widely used \cite{shumwayTimeSeriesAnalysis2017}. In continuous time, the study of stochastic differential equations can be mentioned\cite{thygesenStochasticDifferentialEquations2023}.
+
+\subsection{Copulas}
+
+For describing multivariate distributions with a variety of marginals, the theory of copulas was developed. Formally a copula $C: [0;1]^d \to [0;1]$ is a multivariate distribution with uniform marginals, $U_[0;1]$\cite{ruppertCopulas2015}.
+
+Sklar's Theorem states that every multivariate distribution $F(y_1,y_2, \dots, y_n)$ with marginals $F_1, F_2, \dots, F_n$ can be expressed as a copula\cite{ruppertCopulas2015}:
+\begin{equation}
+    F(y_1,y_2, \dots, y_n) = C\left(F_1(y_1), F_2(y_2), \dots, F_n(y_n)\right) 
+\end{equation}
+and for the density
+\begin{equation}
+    f(y_1,y_2, \dots, y_n) = f_1(y_1) f_2(y_2)\dots f_n(y_n)\ c\left(F_1(y_1), F_2(y_2), \dots, F_n(y_n)\right)
+\end{equation}
+
+The copulas provide a general way to describe multivariate distributions.
+An example of a copula is the Gaussian copula, where the correlation structure is described by a multivariate normal distribution\cite{ruppertCopulas2015}.
+
+\begin{equation}
+\begin{split}
+    F(y_1, y_2, \dots, y_n) &= C_{gauss}(F_1(y_1), F_2(y_2), \dots, F_n(y_n))\\
+    &= \Phi_\Sigma\left(\Phi_\Sigma^{-1}(F_1(y_1)), \Phi_\Sigma^{-1}(F_2(y_2)), \dots, \Phi_\Sigma^{-1}(F_n(y_n))\right) 
+\end{split}
+\end{equation}
+
+where $\Phi_\Sigma = MVN(0, \Sigma)$ is a is \gls{cdf} of a multivariate normal distribution with covariance matrix $\Sigma$.

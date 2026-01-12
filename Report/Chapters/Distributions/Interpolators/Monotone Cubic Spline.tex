@@ -1,0 +1,22 @@
+\subsection{Monotone Cubic Spline}
+\label{distributions:spline}
+
+The final interpolation method is the cubic spline interpolation. Compared to quadratic interpolation, the additional polynomial degree ensures that the interpolated function can be both monotone and smooth. 
+
+For the project the interpolation will be done using Scipy's "\href{https://docs.scipy.org/doc/scipy-1.15.3/reference/generated/scipy.interpolate.PchipInterpolator.html#scipy.interpolate.PchipInterpolator}{\color{blue}{Pchipinterpolator}}"\cite{virtanen2020a,InterpolationScipyinterpolateSciPy}
+
+Here, "PCHIP" stands for "Piecewise Cubic Hermite Interpolating Polynomial".
+
+This method constructs a third-order polynomial on each interval
+
+\begin{align}
+    f_i(x) &= p_i \phi\left(\frac{t_1}{\Delta Q_i}\right) + p_{i+1} \phi\left(\frac{t_2}{\Delta Q_i}\right) - p_i' \psi\left(\frac{t_1}{\Delta Q_i}\right)\Delta Q_i + p_{i+1}' \psi\left(\frac{t_2}{\Delta Q_i}\right)\Delta Q_i \\
+    \phi(x) &=  3x^2 - 2x^2 \\
+    \psi(x) &= x^3 - x^2
+\end{align}
+
+Where $t_1 = q_{i+1} - x$, $t_2 = x - q_{i}$ and $p'_i$ is the derivative or \gls{pdf} at the point $q_i$.\cite{fritschMonotonePiecewiseCubic1980}
+
+The algorithm estimates these during the fitting process and ensures monotonicity, the details of which are beyond the scope of this project.
+
+Compared with linear methods, the cubic splines interpolation produces a nicer fit, the additional conditions on the derivative improve the interpolation even in regions with sparse data as can be seen in \cref{fig:distributions:examplecdf}.

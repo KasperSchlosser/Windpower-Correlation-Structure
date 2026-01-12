@@ -1,0 +1,137 @@
+\section{Neural Nets}
+
+The basis of the \gls{nabqr} algorithm is the \gls{nn} used as a basis for \gls{taqr} regression.
+
+The field of \gls{nn} and, more generally, deep learning, and machine learning. have exploded during the last decade. A complete overview would be difficult to make\cite{liDeepLearningModels2024}.
+
+Instead, a very brief overview is provided here.
+
+\subsection{Calculation}
+
+The most basic \gls{nn} is a fully connected feedforward \gls{nn}. This construction consists of several layers, each with a number of neurons.
+
+More precisely a \gls{nn} consists of a set of weight and bias matrices $\{W_i\}_1^N, \{B_i\}_i^n$, and a set of activation functions $\{h_i\}_1^N$, $N$ being the number of layers. The output of each layer is calculated as an affine function of the input, the transformed with the activation function\cite{skansiIntroductionDeepLearning2018a}.:
+
+\begin{equation}
+    f_{i}(X) = h_i(W_i X + B_i)
+\end{equation}
+The total output being:
+\begin{equation}
+    f(X) = f_n(f_{n-1}(\dots f_{2}(f_{1}(X))\dots)
+\end{equation}
+
+The activation functions are introduced to allow non-linear behaviour, as without them, $h_i(x ) = x$ output any number of layers is just an affine function\cite{skansiIntroductionDeepLearning2018a}:
+\begin{equation}
+\begin{split}
+    f(X) &= W_2(W_1 X + B_1) + B_2)\\
+    &= W_2 W_1 X + W_2 B_1 + B_2 \\
+    &\equiv WX + B
+\end{split}
+\end{equation}
+
+The most common activation function is the \gls{relu} activation.
+\begin{equation}
+    \text{\gls{relu}}(x) = x^+
+\end{equation}
+
+A variant is the leaky \gls{relu}, which still gives non-zero output for negative values:
+\begin{equation}
+    \text{leaky \gls{relu}}(x) = 
+    \begin{cases}
+        x & x \geq 0 \\
+        ax & x < 0
+    \end{cases}
+\end{equation}
+where a is some, usually small, value $a \in [0;1]$.
+
+More complicated activation functions exist, such as sigmoid, tanh, and  \gls{selu}, given by, respectively\cite{szandalaReviewComparisonCommonly2021}:
+
+\begin{align}
+    \sigma(x) &= \frac{1}{1+e^{-x}} \\
+    \tanh(x) &= \frac{e^x - e^{-x}}{{e^x + e^{-x}}}\\
+    \text{\gls{selu}}(x) &= 
+    \begin{cases}
+        \lambda x & x \geq 0 \\
+        \lambda \alpha(e^x-1) & x <0
+    \end{cases}
+\end{align}
+
+For larger complex \gls{nn} the extra computational time required by the more complicated activation function can make them intractable to use. 
+
+For this reason \gls{relu} is often preferred even if the performance of other activation function are better \cite{szandalaReviewComparisonCommonly2021}.
+
+\subsection{Optimizing a \gls{nn}}
+
+To fit a \gls{nn}, the optimal weights are found by optimising a loss function:
+
+\begin{equation}
+\begin{gathered}
+    arg \min_{\theta}L(\theta) \\
+    L(\theta) = L(f_{nn}(X|\theta) - Y)
+\end{gathered}
+\end{equation}
+
+Where $X,Y$ are the input and observations being fitted, $\theta$ is the parameters of the model and $L$ is a loss function, for this project the \gls{qs}, introduced in \cref{evaluation:scores:qs}, is used.
+
+To solve the optimisation problem, the method of gradient descent is used.
+The basic idea of gradient descent is to update the estimated parameters $W,B$ by taking steps in the direction of the gradient of the loss function. That is at each iteration k
+
+\begin{equation}
+    \theta_{k+i} = \theta_k - \eta \nabla_\theta L(\theta_k)
+\end{equation}
+
+where $\eta$ is the step size.
+
+To find the gradient, the concept of backpropagation is used, derived from the chain property of the derivative\cite{skansiIntroductionDeepLearning2018a}.
+
+\begin{equation}
+    \frac{\partial L(\theta)}{\partial W_i}  = \frac{\partial L(\theta)}{\partial f_n}\frac{\partial f_n}{\partial f_{n-1}} \dots \frac{\partial f_i}{\partial W_i}
+\end{equation}
+
+\subsection{Stochastic Gradient Descent and Adam}
+
+One of the most popular and used methods of training \gls{nn} is the class of stochastic gradient descendt algorithm and more specifically the Adam optimisers \cite{kingmaAdamMethodStochastic2017}.
+
+Stochastic gradient descent works similar to normal gradient descent, but achieves a stochastic estimate by sampling only part of the full training data.
+
+The main idea of the Adam optimiser is to estimate the first- and second-order moments, the gradient and curvature of the loss function, using exponentially decaying estimates.
+
+For each step time step in the algorithm, the estimated fist and second moment is updated with the current gradient, and the parameters are updated with correcting for the curvature\cite{kingmaAdamMethodStochastic2017}:
+
+\begin{equation}
+\begin{split}
+    m_{t+1} &= \lambda_1 m_t + (1-\lambda_1)\nabla(L(\theta_t) \\
+    v_{t+1} &= \lambda_2 v_t + (1-\lambda_1)(\nabla(L(\theta_t))^2 \\
+    \theta_{t+1} &= \theta_{t} - \eta \frac{m_{t+1}}{\sqrt{v_{t+1} + \epsilon}}
+\end{split}
+\end{equation}
+
+Were $\lambda_1, \lambda_1$ the rate of exponential decay, and $\epsilon>0$ is a small value to avoid the unbounded growth of the steps in the singularity $v_t = 0$
+
+The curvature correction allows for faster and better convergence, letting the algorithm take large steps in areas with a constant gradient, and forcing smaller steps when the gradient is changing rapidly.
+
+The method is paraphrased here for simplicity; for details see the original paper by \textcite{kingmaAdamMethodStochastic2017}.
+
+\subsection{LSTM}
+
+A final concept to introduce is that of the \gls{lstm} also used for this project.
+
+An \gls{lstm} is a type of recurrent network, that is a \gls{nn} layer connected to itself. \gls{lstm} allows a \gls{nn} to retain state through consecutive inputs.
+
+A single \gls{lstm} unit consists of a state block and an output block.
+
+As the \gls{lstm} gets inputs, the state is updated, used to calculate the output of the cell,  and finally then used as the initial state of the next input\cite{staudemeyerUnderstandingLSTMTutorial2019}. 
+
+\gls{lstm}s allows for \gls{nn} architectures, that is well suited for modelling systems with a causal dependencies between inputs.
+
+Due to their complexity, a full explanation is not provided here; a good explanation can be found in \cite{UnderstandingLSTMNetworks}
+
+\subsection{Notes on Layer Dimension}
+
+For most \gls{nn} the dimensions of the matrices $W_i$ for each layers are relatively simple to determine, if layer $i$ takes $n$ inputs and have to produce $m$ outputs then we can quickly see $W_i \in R^{m \times n}$.
+
+However inputs can have different shapes. The software used in this project handles matrix and tensor inputs as follows:
+
+If a layer has input $X \in R^{d_1,d_2}$ and has to give outputs of size $d_o$ The the layer will have a weight matrix $W \in R^{d_0,d_2}$ and the output will be of shape $y = R^{d_1, d_0}$.
+
+Or to explain in simpler term same function is applied to each row of the input matrix\cite{KerasDeepLearning}.

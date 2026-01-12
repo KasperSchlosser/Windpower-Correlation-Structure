@@ -1,0 +1,27 @@
+\section{Pseudoresidual Correlation Structure}
+
+For the pipeline correlation model, a \gls{sarma} model was used. To select the most suitable order of the model, a search gridsearch was performed over all possible combinations of models 
+\begin{gather*}
+    SARMA( (p,0,q), (P,0,Q,24)) \\
+    p,q \in \{0,1,2,3\} \\
+    P, Q\in \{0,1,2\}
+\end{gather*}
+
+Each model Was estimated on the training data, and the model with the lowest \gls{bic} in each zone was selected for use. The selected models and their estimated parameters can be seen in \cref{tab:autocorrelation:parameters}
+
+\input{Results/Autocorrelation/Tables/Parameters}
+
+In DK2-offshore there was no seasonal terms selected, possibly related to the ensemble failures.
+
+It can also be noted that the residual variance in the onshore zone are smaller than in the offshores zone. This would indicate that the onshore production is more predictable.
+
+The models appeared to handle all autocorrelation present in the observations, as can be seen in the diagnostic plots, \cref{fig:autocorrelation:sarmaresiduals} for DK1 onshore and all zones in \cref{appedix:autocorrelation} with no significant lags in either \gls{acf} or \gls{pacf}  in any zone. 
+
+\begin{figure}[htb]
+    \centering
+    \caption[SARMA diagnostic plots]{Diagnostic plots for the \gls{sarma}((3,0,0), (1,0,2,24) model in DK1-onshore}
+    \includegraphics[width=1\linewidth]{Results/Autocorrelation/Figures/Residuals/DK1-onshore.pdf}
+    \label{fig:autocorrelation:sarmaresiduals}
+\end{figure}
+
+The tails of the distribution still seem to be a problem. The histograms show more centred distributions than expected, while there are quite a few outliers in all zones.
